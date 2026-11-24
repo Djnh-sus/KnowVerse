@@ -1,0 +1,137 @@
+/* styles/lite-themes.css
+ * Bảng màu Neon Vũ Trụ cho KnowVerse:
+ * - Nền khung (--card-bg-1 -> --card-bg-2) được nâng rõ sắc độ của từng môn và kết hợp quầng sáng tâm (--card-spot)
+ *   để phần ruột khung hòa quyện với viền neon, không bị cảm giác "viền sáng bọc hộp đen trống".
+ * - Riêng môn Hóa dùng nền than chàm ấm nhẹ ở trên + ánh hổ phách trong trẻo, tránh hoàn toàn màu nâu đục.
+ */
+
+body.lite[data-theme="home"] {
+  --bg: #04050a;
+  --base-rgb: 4, 5, 10;
+  --mid-rgb: 10, 15, 32;
+  --support: #1d5be0;
+  --support-rgb: 29, 91, 224;
+  --accent: #dfe5eb;
+  --accent-rgb: 223, 229, 235;
+  --glow: rgba(223, 229, 235, 0.28);
+  --soft: #9aa6ba;
+  --card-bg-1: rgba(20, 28, 48, 0.92);
+  --card-bg-2: rgba(9, 13, 24, 0.96);
+  --card-spot: rgba(148, 163, 184, 0.14);
+  --card-border: rgba(223, 229, 235, 0.28);
+}
+
+/* Toán: Neon Cyan (#7dd3fc) */
+body.lite[data-theme="toan"],
+.lite-subject-card[data-subject="Toán"],
+.lite-subject-hero[data-subject="Toán"] {
+  --bg: #040814;
+  --base-rgb: 4, 8, 20;
+  --mid-rgb: 10, 24, 52;
+  --support: #0284c7;
+  --support-rgb: 2, 132, 199;
+  --accent: #7dd3fc;
+  --accent-rgb: 125, 211, 252;
+  --glow: rgba(125, 211, 252, 0.42);
+  --soft: #b4d0eb;
+
+  --card-accent: #7dd3fc;
+  --card-accent-rgb: 125, 211, 252;
+  --card-glow: rgba(125, 211, 252, 0.42);
+  --card-spot: rgba(56, 189, 248, 0.26);
+  --card-bg-1: rgba(18, 44, 84, 0.9);
+  --card-bg-2: rgba(8, 16, 34, 0.96);
+  --card-border: color-mix(in srgb, #7dd3fc 60%, rgba(255, 255, 255, 0.34));
+}
+
+/* Lý: Neon Electric Purple (#c084fc) */
+body.lite[data-theme="ly"],
+.lite-subject-card[data-subject="Lý"],
+.lite-subject-hero[data-subject="Lý"] {
+  --bg: #070514;
+  --base-rgb: 7, 5, 20;
+  --mid-rgb: 22, 13, 50;
+  --support: #7c3aed;
+  --support-rgb: 124, 58, 237;
+  --accent: #c084fc;
+  --accent-rgb: 192, 132, 252;
+  --glow: rgba(192, 132, 252, 0.44);
+  --soft: #cfbced;
+
+  --card-accent: #c084fc;
+  --card-accent-rgb: 192, 132, 252;
+  --card-glow: rgba(192, 132, 252, 0.44);
+  --card-spot: rgba(168, 85, 247, 0.26);
+  --card-bg-1: rgba(40, 24, 82, 0.9);
+  --card-bg-2: rgba(13, 10, 30, 0.96);
+  --card-border: color-mix(in srgb, #c084fc 60%, rgba(255, 255, 255, 0.34));
+}
+
+/* Hóa: Neon Gold / Amber (#fbbf24) trên nền Đen Chàm Ánh Vàng (không bị nâu xỉn) */
+body.lite[data-theme="hoa"],
+.lite-subject-card[data-subject="Hóa"],
+.lite-subject-hero[data-subject="Hóa"] {
+  --bg: #070810;
+  --base-rgb: 7, 8, 16;
+  --mid-rgb: 18, 18, 32;
+  --support: #f59e0b;
+  --support-rgb: 245, 158, 11;
+  --accent: #fbbf24;
+  --accent-rgb: 251, 191, 36;
+  --glow: rgba(251, 191, 36, 0.42);
+  --soft: #e6d5b8;
+
+  --card-accent: #fbbf24;
+  --card-accent-rgb: 251, 191, 36;
+  --card-glow: rgba(251, 191, 36, 0.42);
+  --card-spot: rgba(251, 191, 36, 0.22);
+  --card-bg-1: rgba(34, 30, 44, 0.92);
+  --card-bg-2: rgba(11, 12, 22, 0.96);
+  --card-border: color-mix(in srgb, #fbbf24 60%, rgba(255, 255, 255, 0.34));
+}
+
+/* Sinh: Neon Emerald (#34d399) */
+body.lite[data-theme="sinh"],
+.lite-subject-card[data-subject="Sinh"],
+.lite-subject-hero[data-subject="Sinh"] {
+  --bg: #040d0b;
+  --base-rgb: 4, 13, 11;
+  --mid-rgb: 9, 34, 27;
+  --support: #10b981;
+  --support-rgb: 16, 185, 129;
+  --accent: #34d399;
+  --accent-rgb: 52, 211, 153;
+  --glow: rgba(52, 211, 153, 0.42);
+  --soft: #b2dfc9;
+
+  --card-accent: #34d399;
+  --card-accent-rgb: 52, 211, 153;
+  --card-glow: rgba(52, 211, 153, 0.42);
+  --card-spot: rgba(52, 211, 153, 0.24);
+  --card-bg-1: rgba(16, 52, 44, 0.9);
+  --card-bg-2: rgba(7, 18, 17, 0.96);
+  --card-border: color-mix(in srgb, #34d399 60%, rgba(255, 255, 255, 0.34));
+}
+
+/* Tin: Neon Magenta / Pink (#f472b6) */
+body.lite[data-theme="tin"],
+.lite-subject-card[data-subject="Tin"],
+.lite-subject-hero[data-subject="Tin"] {
+  --bg: #0a050e;
+  --base-rgb: 10, 5, 14;
+  --mid-rgb: 32, 12, 34;
+  --support: #db2777;
+  --support-rgb: 219, 39, 119;
+  --accent: #f472b6;
+  --accent-rgb: 244, 114, 182;
+  --glow: rgba(244, 114, 182, 0.44);
+  --soft: #e8bcd2;
+
+  --card-accent: #f472b6;
+  --card-accent-rgb: 244, 114, 182;
+  --card-glow: rgba(244, 114, 182, 0.44);
+  --card-spot: rgba(244, 114, 182, 0.24);
+  --card-bg-1: rgba(54, 22, 48, 0.9);
+  --card-bg-2: rgba(15, 9, 20, 0.96);
+  --card-border: color-mix(in srgb, #f472b6 60%, rgba(255, 255, 255, 0.34));
+}

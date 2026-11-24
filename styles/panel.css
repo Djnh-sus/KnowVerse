@@ -1,0 +1,77 @@
+/* styles/panel.css
+ * 3 Bảng rút gọn neo cạnh 3 Icon Hành tinh: chỉ hiện Tiêu đề + Mô tả.
+ * Khi di chuột vào bảng HOẶC vào hành tinh liên kết (.is-linked-hover), cả hai cùng phóng to mượt.
+ */
+.sec-card {
+  --card-w: calc(222px * var(--ui));
+  position: absolute; left: 0; top: 0;
+  width: var(--card-w);
+  max-width: min(256px, calc(100vw - 24px));
+  padding: calc(13px * var(--ui)) calc(16px * var(--ui));
+  border-radius: calc(16px * var(--ui));
+  background: linear-gradient(165deg, rgba(20, 26, 42, .82), rgba(9, 12, 22, .86));
+  border: 1px solid color-mix(in srgb, var(--accent, #7dd3fc) 34%, rgba(255, 255, 255, .15));
+  box-shadow: 0 16px 38px rgba(0, 0, 0, .55), 0 1px 0 rgba(255, 255, 255, .14) inset;
+  backdrop-filter: var(--blur-heavy); -webkit-backdrop-filter: var(--blur-heavy);
+  color: var(--text);
+  text-align: left;
+  pointer-events: auto;
+  cursor: pointer;
+  will-change: transform, opacity;
+  transform-origin: var(--origin-x, 50%) var(--origin-y, 50%);
+  transition: border-color .24s ease, box-shadow .28s ease;
+}
+
+.sec-card::before {
+  content: ''; position: absolute; left: 16%; right: 16%; top: -1px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent, #7dd3fc), transparent);
+  opacity: .85; pointer-events: none;
+}
+
+.sec-card:hover,
+.sec-card:focus-visible,
+.sec-card.is-linked-hover {
+  border-color: color-mix(in srgb, var(--accent, #7dd3fc) 88%, #fff);
+  box-shadow: 0 24px 52px rgba(0, 0, 0, .70), 0 0 34px var(--glow, rgba(125, 211, 252, .32)), 0 1px 0 rgba(255, 255, 255, .24) inset;
+  z-index: 25;
+}
+
+/* Mũi tên (beak) trên viền bảng chỉa thẳng vào icon hành tinh */
+.card-beak {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(12px * var(--ui));
+  height: calc(12px * var(--ui));
+  min-width: 9px; min-height: 9px;
+  background: rgba(15, 20, 34, .94);
+  border-left: 1px solid color-mix(in srgb, var(--accent, #7dd3fc) 55%, rgba(255, 255, 255, .25));
+  border-top: 1px solid color-mix(in srgb, var(--accent, #7dd3fc) 55%, rgba(255, 255, 255, .25));
+  pointer-events: none;
+  transition: border-color .24s ease;
+}
+.sec-card.is-linked-hover .card-beak {
+  border-color: color-mix(in srgb, var(--accent, #7dd3fc) 90%, #fff);
+}
+
+.sec-card-title {
+  margin: 0 0 calc(5px * var(--ui));
+  font-size: max(13.5px, calc(16.5px * var(--ui)));
+  font-weight: 700;
+  letter-spacing: -.018em;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.sec-card-desc {
+  margin: 0;
+  font-size: max(11px, calc(12.5px * var(--ui)));
+  line-height: 1.42;
+  color: #c3cad6;
+}
+
+/* SVG lớp vẽ tia nối từ ngôi sao -> icon hành tinh -> mũi bảng */
+.sys-svg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; overflow: visible;
+}

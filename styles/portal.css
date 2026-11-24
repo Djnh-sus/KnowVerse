@@ -1,0 +1,815 @@
+/* styles/portal.css
+ * Lớp điều phối chung cho KnowVerse:
+ * - Bảo đảm màn hình #login và bảng chọn giao diện hiển thị trên nền 1 màu duy nhất (#000000), không lộ UI 3D hay Nhẹ phía sau.
+ * - Menu tài khoản 3 lựa chọn (Thông tin TK & bài đăng, Cài đặt, Đăng xuất) đồng bộ trên cả 3D và Giao diện Nhẹ.
+ * - Giao diện Cài đặt dạng danh sách các thanh ngang (thanh đầu là Giao diện hiển thị có nút Đổi mở bảng chọn riêng; các thanh dưới là mẫu).
+ */
+
+/* Ẩn hoàn toàn cả 2 giao diện khi đang khóa (đăng nhập) hoặc đang chọn giao diện */
+body.locked #scene,
+body.locked #ui,
+body.locked #hint,
+body.locked #back,
+body.locked #liteShell,
+body.choosing-mode #scene,
+body.choosing-mode #ui,
+body.choosing-mode #hint,
+body.choosing-mode #back,
+body.choosing-mode #liteShell {
+  display: none !important;
+}
+
+/* Giữ #scene và #ui có đủ kích thước thật lúc WebGL2 khởi tạo nhưng chưa lộ khung chưa hoàn chỉnh */
+body.booting-3d #scene,
+body.booting-3d #ui {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Khóa cuộn nền khi mở modal portal */
+body.kv-modal-open {
+  overflow: hidden !important;
+}
+
+/* Bảo đảm khung đăng nhập cuộn gọn nếu bật chế độ Tạo tài khoản trên màn hình thấp */
+.sheet {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+
+/* Cho phép #top / #me nổi trên .lite-header (z-index 30) nhưng dưới bảng chi tiết (35/38) và overlay portal (70) */
+#top {
+  z-index: 32;
+}
+
+#toast {
+  z-index: 80;
+}
+
+/* Chừa khoảng trống bên phải sticky header của Giao diện Nhẹ để không chạm #avatar */
+body.lite .lite-header {
+  padding-right: max(78px, calc(var(--safe-right, 16px) + 56px));
+}
+
+/* Ghi đè height: 100% và margin form của base.css để Giao diện Nhẹ cuộn mượt và ô tìm kiếm không lệch */
+html.lite-root,
+body.lite {
+  height: auto;
+  min-height: 100%;
+}
+
+#liteShell input,
+#liteShell label {
+  margin: 0;
+}
+
+/* Bảo vệ kích thước SVG trong portal khỏi rule svg { width: 100%; height: 100%; } của lite.css */
+#me .kv-menu-icon svg,
+.kv-portal-overlay svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ---------- Menu tài khoản 3 lựa chọn (#me / #menu) ---------- */
+#me #menu {
+  min-width: 248px;
+  padding: 10px;
+  border-radius: 16px;
+  background: linear-gradient(170deg, rgba(16, 22, 38, 0.96), rgba(9, 12, 22, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+#me .kv-menu-head {
+  padding: 4px 8px 8px;
+}
+
+#me #who {
+  padding: 0;
+  color: #f8fafc;
+  font-size: 13.5px;
+  font-weight: 650;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#me .kv-menu-mode {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: rgba(186, 230, 253, 0.85);
+}
+
+#me .kv-menu-divider {
+  height: 1px;
+  margin: 4px 4px 8px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#me .kv-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#me .kv-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e2e8f0;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+#me .kv-menu-item:hover,
+#me .kv-menu-item:focus-visible {
+  background: rgba(125, 211, 252, 0.12);
+  border-color: rgba(125, 211, 252, 0.28);
+  color: #ffffff;
+}
+
+#me .kv-menu-item.is-danger {
+  background: rgba(248, 113, 113, 0.08);
+  color: #fecaca;
+}
+
+#me .kv-menu-item.is-danger:hover,
+#me .kv-menu-item.is-danger:focus-visible {
+  background: rgba(248, 113, 113, 0.18);
+  border-color: rgba(248, 113, 113, 0.34);
+  color: #ffffff;
+}
+
+#me .kv-menu-icon {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  color: #7dd3fc;
+}
+
+#me .kv-menu-item.is-danger .kv-menu-icon {
+  color: #fda4af;
+}
+
+#me .kv-menu-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+#me .kv-menu-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+#me .kv-menu-sub {
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.25;
+  color: rgba(203, 213, 225, 0.65);
+}
+
+/* ---------- Bảng overlay dùng chung (Chọn giao diện / Tài khoản / Cài đặt / Đổi giao diện) ---------- */
+.kv-portal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: rgba(3, 6, 14, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.kv-portal-overlay[hidden] {
+  display: none !important;
+}
+
+/* Khi chọn giao diện sau đăng nhập: nền giữ đồng bộ 1 màu tối #000000 */
+body.choosing-mode .kv-portal-overlay {
+  background: #000000;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.kv-modal-panel {
+  position: relative;
+  width: min(760px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 26px 26px 22px;
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(125, 211, 252, 0.10), transparent 58%),
+    linear-gradient(175deg, rgba(16, 22, 38, 0.96), rgba(9, 12, 22, 0.99));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, 0.78),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  color: var(--ink, #eef4ff);
+}
+
+.kv-modal-panel.is-narrow {
+  width: min(660px, 100%);
+}
+
+.kv-modal-head {
+  text-align: center;
+  max-width: 560px;
+  margin: 0 auto 22px;
+}
+
+.kv-sheet-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.kv-sheet-top .kv-eyebrow {
+  margin-bottom: 8px;
+}
+
+.kv-sheet-top .kv-modal-title {
+  margin-bottom: 4px;
+  text-align: left;
+}
+
+.kv-sheet-top .kv-modal-sub {
+  text-align: left;
+}
+
+.kv-close-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 9px;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.kv-close-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.34);
+  color: #ffffff;
+  transform: scale(1.06);
+}
+
+.kv-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  background: rgba(125, 211, 252, 0.08);
+  color: #bae6fd;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.kv-modal-title {
+  margin: 0 0 8px;
+  font-size: clamp(20px, 2.5vw, 25px);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.24;
+  color: #f8fafc;
+}
+
+.kv-modal-sub {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: rgba(203, 213, 225, 0.78);
+}
+
+/* ---------- Lưới chọn 2 giao diện (Mode Picker & Bảng đổi giao diện) ---------- */
+.kv-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.kv-mode-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: 20px 18px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.22s ease, background 0.22s ease, box-shadow 0.22s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.kv-mode-card:hover {
+  transform: translateY(-2px);
+}
+
+.kv-mode-card.is-saved,
+.kv-mode-card.is-active {
+  border-color: rgba(125, 211, 252, 0.44);
+  box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.18);
+}
+
+.kv-mode-card[data-mode="3d"]:hover,
+.kv-mode-card[data-mode="3d"]:focus-visible,
+.kv-mode-card[data-switch-mode="3d"]:hover:not(:disabled),
+.kv-mode-card[data-switch-mode="3d"]:focus-visible:not(:disabled) {
+  border-color: rgba(251, 191, 36, 0.62);
+  background:
+    radial-gradient(95% 85% at 80% 10%, rgba(251, 191, 36, 0.14), transparent 62%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025));
+  box-shadow: 0 12px 34px rgba(245, 158, 11, 0.18), 0 0 0 1px rgba(251, 191, 36, 0.22);
+}
+
+.kv-mode-card[data-mode="lite"]:hover,
+.kv-mode-card[data-mode="lite"]:focus-visible,
+.kv-mode-card[data-switch-mode="lite"]:hover:not(:disabled),
+.kv-mode-card[data-switch-mode="lite"]:focus-visible:not(:disabled) {
+  border-color: rgba(56, 189, 248, 0.65);
+  background:
+    radial-gradient(95% 85% at 80% 10%, rgba(56, 189, 248, 0.15), transparent 62%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025));
+  box-shadow: 0 12px 34px rgba(56, 189, 248, 0.18), 0 0 0 1px rgba(56, 189, 248, 0.24);
+}
+
+.kv-mode-card:disabled {
+  opacity: 0.74;
+  cursor: default;
+  transform: none;
+}
+
+.kv-mode-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.kv-mode-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.kv-mode-icon {
+  width: 44px;
+  height: 44px;
+  padding: 9px;
+  border-radius: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kv-mode-card[data-mode="3d"] .kv-mode-icon,
+.kv-mode-card[data-switch-mode="3d"] .kv-mode-icon {
+  background: rgba(251, 191, 36, 0.14);
+  border: 1px solid rgba(251, 191, 36, 0.34);
+  color: #fcd34d;
+}
+
+.kv-mode-card[data-mode="lite"] .kv-mode-icon,
+.kv-mode-card[data-switch-mode="lite"] .kv-mode-icon {
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.34);
+  color: #7dd3fc;
+}
+
+.kv-mode-tag {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.85);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.kv-mode-tag.is-highlight {
+  color: #e0f2fe;
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.42);
+}
+
+.kv-mode-name {
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-weight: 720;
+  letter-spacing: -0.01em;
+  color: #f8fafc;
+}
+
+.kv-mode-desc {
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: rgba(203, 213, 225, 0.76);
+  flex: 1;
+}
+
+.kv-mode-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 13px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 650;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+
+.kv-mode-foot {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+  color: rgba(203, 213, 225, 0.7);
+}
+
+.kv-link-btn {
+  border: 0;
+  background: none;
+  padding: 5px 9px;
+  border-radius: 8px;
+  color: #93c5fd;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.kv-link-btn:hover {
+  background: rgba(147, 197, 253, 0.12);
+  color: #dbeafe;
+}
+
+/* ---------- Danh sách thanh ngang Cài đặt (.kv-setting-list) ---------- */
+.kv-setting-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kv-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018));
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.kv-setting-row.is-primary-row {
+  border-color: rgba(125, 211, 252, 0.28);
+  background:
+    radial-gradient(90% 120% at 0% 50%, rgba(56, 189, 248, 0.09), transparent 65%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+}
+
+.kv-setting-row.is-sample-row {
+  cursor: pointer;
+}
+
+.kv-setting-row.is-sample-row:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.kv-setting-left {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  flex: 1;
+}
+
+.kv-setting-icon {
+  width: 40px;
+  height: 40px;
+  padding: 9px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  color: #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kv-setting-row.is-primary-row .kv-setting-icon {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.34);
+  color: #7dd3fc;
+}
+
+.kv-setting-meta {
+  min-width: 0;
+}
+
+.kv-setting-name {
+  margin: 0 0 3px;
+  font-size: 14.5px;
+  font-weight: 680;
+  color: #f8fafc;
+  line-height: 1.25;
+}
+
+.kv-setting-desc {
+  margin: 0;
+  font-size: 12.5px;
+  color: rgba(203, 213, 225, 0.72);
+  line-height: 1.38;
+}
+
+.kv-setting-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.kv-row-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.42);
+  background: rgba(56, 189, 248, 0.16);
+  color: #e0f2fe;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.14s ease;
+}
+
+.kv-row-btn:hover,
+.kv-row-btn:focus-visible {
+  background: rgba(56, 189, 248, 0.28);
+  border-color: rgba(125, 211, 252, 0.7);
+  color: #ffffff;
+}
+
+.kv-row-btn:active {
+  transform: scale(0.97);
+}
+
+.kv-row-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(203, 213, 225, 0.72);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ---------- Bảng Thông tin tài khoản & Bài đăng của bản thân ---------- */
+.kv-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.035);
+  margin-bottom: 18px;
+}
+
+.kv-profile-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #27344f, #111827);
+  border: 1.5px solid rgba(125, 211, 252, 0.45);
+  box-shadow: 0 0 22px rgba(56, 189, 248, 0.22);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 750;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.kv-profile-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.kv-profile-name {
+  margin: 0 0 3px;
+  font-size: 17px;
+  font-weight: 720;
+  color: #f8fafc;
+}
+
+.kv-profile-email {
+  margin: 0 0 9px;
+  font-size: 13px;
+  color: rgba(203, 213, 225, 0.72);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kv-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kv-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.kv-chip.is-accent {
+  color: #bae6fd;
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.34);
+}
+
+.kv-section {
+  margin-top: 18px;
+}
+
+.kv-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.kv-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kv-section-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.kv-action-btn {
+  border: 1px solid rgba(125, 211, 252, 0.32);
+  background: rgba(56, 189, 248, 0.12);
+  color: #e0f2fe;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.kv-action-btn:hover {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: rgba(125, 211, 252, 0.55);
+}
+
+/* Khung trống thiết kế sẵn cho Bài đăng của bản thân */
+.kv-empty-stage {
+  min-height: 176px;
+  padding: 28px 20px;
+  border-radius: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.kv-empty-icon {
+  width: 38px;
+  height: 38px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(148, 163, 184, 0.9);
+  margin-bottom: 10px;
+}
+
+.kv-empty-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 650;
+  color: #e2e8f0;
+}
+
+.kv-empty-desc {
+  margin: 0;
+  max-width: 400px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+/* Responsive dùng chung cho màn đăng nhập, #top và các modal portal trên mobile */
+@media (max-width: 720px) {
+  #top {
+    padding: max(10px, env(safe-area-inset-top)) 12px 0;
+  }
+  #avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+  }
+  .sheet {
+    padding: 22px 18px;
+  }
+  body.lite .lite-header {
+    padding-right: max(62px, calc(var(--safe-right, 12px) + 46px));
+  }
+}
+
+@media (max-width: 640px) {
+  .kv-modal-panel {
+    padding: 22px 16px 18px;
+    border-radius: 20px;
+  }
+  .kv-mode-grid {
+    grid-template-columns: 1fr;
+  }
+  .kv-profile-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .kv-setting-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .kv-setting-right {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-height: 540px) {
+  #top {
+    padding-top: 8px;
+  }
+}

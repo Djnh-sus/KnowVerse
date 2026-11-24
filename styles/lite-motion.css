@@ -1,0 +1,206 @@
+/* styles/lite-motion.css
+ * Hiệu ứng Neon nổi bật đồng bộ với bản 3D KnowVerse kết hợp lò xo GSAP Apple Fluid Interfaces:
+ * - Không đặt CSS transition lên `transform` để GSAP điều khiển hoàn toàn, không xung đột.
+ * - Khi di chuột vào thẻ hoặc nút: viền Neon sáng rực và tỏa hào quang (--card-glow / --glow) giống hệt bản 3D.
+ */
+
+.lite-press,
+.lite-subject-card,
+.lite-subject-hero,
+.lite-section-card,
+.lite-detail-panel,
+.lite-row,
+.lite-grade-trigger,
+.lite-grade-option {
+  transition:
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.26s ease,
+    color 0.18s ease;
+}
+
+.lite-subject-card,
+.lite-subject-hero,
+.lite-section-card,
+.lite-detail-panel {
+  will-change: transform, opacity;
+}
+
+.lite-brand-mark,
+.lite-back-icon,
+.lite-grade-chev,
+.lite-menu-icon,
+.lite-subject-icon,
+.lite-subject-arrow,
+.lite-card-wm,
+.lite-hero-core,
+.lite-hero-ring,
+.lite-section-icon,
+.lite-section-arrow,
+.lite-search-icon,
+.lite-upload-icon,
+.lite-row-idx,
+.lite-row-go,
+.lite-g {
+  transition:
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.26s ease,
+    opacity 0.24s ease,
+    color 0.18s ease;
+  transform-origin: center;
+}
+
+/* ---------- Hiệu ứng gợn sóng (Ripple) ---------- */
+.lite-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.lite-ripple-wave {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 70%);
+  transform: translate(-50%, -50%) scale(0);
+  animation: liteRipple 0.52s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes liteRipple {
+  to {
+    transform: translate(-50%, -50%) scale(2.5);
+    opacity: 0;
+  }
+}
+
+/* ---------- Hiệu ứng tỏa sáng Neon khi Di chuột (Hover) ---------- */
+@media (hover: hover) {
+  .lite-back:hover,
+  .lite-grade-trigger:hover {
+    border-color: color-mix(in srgb, var(--accent) 85%, #fff);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5), 0 0 20px var(--glow);
+  }
+
+  .lite-grade-option:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: #fff;
+  }
+
+  .lite-grade-option.is-active:hover {
+    background: rgba(var(--accent-rgb), 0.2);
+  }
+
+  .lite-avatar:hover {
+    border-color: #fff;
+    box-shadow: 0 0 22px var(--glow);
+  }
+
+  .lite-menu-item:hover {
+    background: rgba(var(--accent-rgb), 0.16);
+    color: #fff;
+  }
+
+  /* Thẻ Môn học phát sáng Neon giống .hub:hover của bản 3D */
+  .lite-subject-card:hover {
+    border-color: color-mix(in srgb, var(--card-accent) 90%, #fff);
+    box-shadow:
+      0 20px 46px rgba(0, 0, 0, 0.65),
+      0 0 34px var(--card-glow),
+      inset 0 0 24px color-mix(in srgb, var(--card-accent) 26%, transparent);
+  }
+
+  .lite-subject-card:hover .lite-subject-icon {
+    border-color: color-mix(in srgb, var(--card-accent) 92%, #fff);
+    box-shadow:
+      0 0 28px var(--card-glow),
+      inset 0 0 16px color-mix(in srgb, var(--card-accent) 38%, transparent);
+  }
+
+  .lite-subject-card:hover .lite-card-wm {
+    opacity: 0.11;
+  }
+
+  .lite-subject-card:hover .lite-subject-arrow {
+    background: var(--card-accent);
+    border-color: var(--card-accent);
+    color: #060913;
+    box-shadow: 0 0 18px var(--card-glow);
+  }
+
+  .lite-section-card:hover .lite-card-wm {
+    opacity: 0.1;
+  }
+
+  .lite-subject-hero:hover {
+    border-color: color-mix(in srgb, var(--accent) 88%, #fff);
+    box-shadow:
+      0 22px 50px rgba(0, 0, 0, 0.65),
+      0 0 36px var(--glow),
+      inset 0 0 24px color-mix(in srgb, var(--accent) 24%, transparent);
+  }
+
+  .lite-subject-hero:hover .lite-hero-core {
+    border-color: color-mix(in srgb, var(--accent) 92%, #fff);
+    box-shadow:
+      0 0 32px var(--glow),
+      inset 0 0 18px color-mix(in srgb, var(--accent) 38%, transparent);
+  }
+
+  /* 3 Khung Phân hệ phát sáng Neon giống .sec-card:hover của bản 3D */
+  .lite-section-card:hover {
+    border-color: color-mix(in srgb, var(--accent) 90%, #fff);
+    box-shadow:
+      0 22px 48px rgba(0, 0, 0, 0.65),
+      0 0 32px var(--glow),
+      inset 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+
+  .lite-section-card:hover .lite-section-icon {
+    border-color: color-mix(in srgb, var(--accent) 90%, #fff);
+    box-shadow:
+      0 0 24px var(--glow),
+      inset 0 0 14px color-mix(in srgb, var(--accent) 34%, transparent);
+  }
+
+  .lite-section-card:hover .lite-section-arrow {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #060913;
+    box-shadow: 0 0 18px var(--glow);
+  }
+
+  .lite-upload-btn:hover {
+    box-shadow: 0 0 24px var(--glow);
+    filter: brightness(1.08);
+  }
+
+  .lite-row:hover {
+    border-color: color-mix(in srgb, var(--accent) 78%, #fff);
+    background: rgba(var(--accent-rgb), 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 18px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+
+  .lite-row:hover .lite-row-idx {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #060913;
+    box-shadow: 0 0 14px var(--glow);
+  }
+
+  .lite-btn--ghost:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.45);
+  }
+}
+
+.lite-search:focus-within .lite-search-icon {
+  color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

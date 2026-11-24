@@ -1,0 +1,58 @@
+/* styles/grade-core.css
+ * Số khối (12) nằm ngay trong bóng đen của hố đen, luôn quay mặt về người dùng (lớp HTML phẳng trên cảnh 3D).
+ * Bấm vào -> 3 lựa chọn 10 · 11 · 12 bung ra theo vòng cung quanh hố đen (GSAP, xuất phát từ tâm).
+ */
+#gradeCore { width: 0; height: 0; }
+
+.core-btn {
+  --core-d: 64px;
+  position: absolute; left: 0; top: 0;
+  width: var(--core-d); height: var(--core-d); padding: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1px solid transparent; background: transparent;
+  transform: translate(-50%, -50%);
+  pointer-events: auto; color: #fff;
+  transition: border-color .25s ease, box-shadow .3s ease, transform .12s ease-out;
+}
+.core-btn:hover, .core-btn:focus-visible, #gradeCore.is-open .core-btn {
+  border-color: rgba(255, 238, 214, .35);
+  box-shadow: 0 0 0 6px rgba(255, 238, 214, .04), 0 0 30px rgba(255, 210, 160, .16);
+}
+.core-btn:active { transform: translate(-50%, -50%) scale(.94); }
+
+.core-cap {
+  font-size: max(7px, calc(var(--core-d) * .115)); font-weight: 600; letter-spacing: .18em; line-height: 1;
+  color: rgba(255, 236, 214, .7); margin-bottom: calc(var(--core-d) * .02); text-transform: uppercase;
+}
+.core-num {
+  font-size: max(13px, calc(var(--core-d) * .44)); font-weight: 750; line-height: .95; letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, #ffffff 20%, #ffe2c2 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 8px rgba(255, 214, 170, .45));
+}
+#gradeCore.is-small .core-cap { display: none; }
+
+/* lựa chọn khối */
+.grade-picker { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.grade-opt {
+  position: absolute; left: 0; top: 0;
+  width: calc(64px * var(--ui)); height: calc(64px * var(--ui)); min-width: 50px; min-height: 50px; padding: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 30%, rgba(40, 46, 64, .82), rgba(8, 10, 18, .86));
+  border: 1px solid rgba(255, 255, 255, .16);
+  backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .5), 0 1px 0 rgba(255, 255, 255, .12) inset;
+  pointer-events: auto; will-change: transform, opacity;
+}
+.grade-opt b { font-size: max(17px, calc(22px * var(--ui))); font-weight: 750; letter-spacing: -.03em; line-height: 1; }
+.grade-opt small { font-size: max(8.5px, calc(9.5px * var(--ui))); font-weight: 600; color: var(--muted); letter-spacing: .02em; line-height: 1.1; }
+.grade-opt.is-active { border-color: rgba(255, 236, 214, .7); box-shadow: 0 10px 28px rgba(0, 0, 0, .5), 0 0 22px rgba(255, 214, 170, .25); }
+.grade-opt.is-active small { color: #ffe2c2; }
+.grade-opt.is-locked { color: rgba(238, 241, 246, .62); }
+.grade-opt.is-locked b { opacity: .7; }
+.grade-opt:hover { border-color: rgba(255, 255, 255, .45); }
+/* GSAP điều khiển transform của .grade-opt, nên phản hồi nhấn nằm ở lớp con .press */
+.grade-opt .press { display: flex; flex-direction: column; align-items: center; gap: 1px; transition: transform .1s ease-out; }
+.grade-opt:active .press { transform: scale(.94); }
