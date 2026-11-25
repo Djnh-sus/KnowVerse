@@ -21,6 +21,7 @@
   const CustomEase = global.CustomEase;
   const Lenis = global.Lenis;
   const reducedMotion = global.matchMedia('(prefers-reduced-motion: reduce)');
+  const STACK_MQ = '(max-width: 900px) and (min-height: 501px)';
 
   if (gsap && CustomEase) {
     gsap.registerPlugin(CustomEase);
@@ -74,11 +75,15 @@
 
   let toastTimer = 0;
   let stageMorphTl = null;
+  let stageDir = null;
+  let stageSubject = null;
+  let homeScrollY = 0;
   let detailLenis = null;
   let detailTl = null;
   let detailOpen = false;
   let detailClosing = false;
-  let detailDescTimer = 0;
+  let detailSubject = null;
+  let detailSection = null;
   let activeSectionCardEl = null;
 
   function isReduced() {
@@ -123,14 +128,23 @@
       }
 
       if (gsap && !isReduced()) {
-        const isHovered = el.matches(':hover');
-        const targetScale = isCard ? (isHovered ? 1.022 : 1) : (isHovered ? 1.04 : 1);
+        const isHovered = el.matches(':hover') && global.matchMedia('(hover: hover)').matches;
+        let targetScale = 1;
+        if (isHovered) {
+          if (el.classList.contains('lite-subject-card')) targetScale = 1.022;
+          else if (el.classList.contains('lite-section-card')) targetScale = 1.012;
+          else if (el.id === 'liteBack') targetScale = 1.05;
+          else if (el.id === 'liteGradeBtn') targetScale = 1.04;
+          else if (el.id === 'liteAvatar') targetScale = 1.08;
+          else if (el.classList.contains('lite-upload-btn')) targetScale = 1.03;
+          else if (el.classList.contains('lite-detail-close')) targetScale = 1.16;
+        }
         gsap.to(el, {
           scale: targetScale,
           duration: 0.34,
           ease: 'appleSpring',
           overwrite: 'auto',
-          clearProps: isHovered ? '' : 'transform',
+          clearProps: targetScale === 1 && !el.classList.contains('lite-row') ? 'transform' : '',
         });
       }
     };
@@ -611,12 +625,13 @@
       heroCardWm,
     ].filter(Boolean);
 
-    gsap.set(animChildren, {
-      clearProps: 'width,height,padding,fontSize,transform,opacity,visibility,left,top',
-    });
-
+    // Đọc toàn bộ tọa độ và style trong 1 pass duy nhất trước khi ghi style (tránh layout thrashing)
     const heroRect = fixedHeroRect || heroSlot.getBoundingClientRect();
+    const baseW = Math.max(1, heroRect.width);
+    const baseH = Math.max(1, heroRect.height);
+    const baseRadius = parseFloat(getComputedStyle(hero).borderTopLeftRadius) || 26;
     const heroCoreRect1 = heroCore ? heroCore.getBoundingClientRect() : heroRect;
+    const heroTitleRect1 = heroTitle ? heroTitle.getBoundingClientRect() : heroRect;
     const heroCoreW = heroCoreRect1.width || 92;
     const heroTitlePx = heroTitle ? parseFloat(getComputedStyle(heroTitle).fontSize) || 38 : 38;
     const heroBorderL = hero.clientLeft || 1.5;
@@ -626,6 +641,9 @@
     const shiftX = fixedCardRect ? fixedCardRect.left - rawCardRect.left : 0;
     const shiftY = fixedCardRect ? fixedCardRect.top - rawCardRect.top : 0;
     const cardRect = fixedCardRect || rawCardRect;
+    const sx0 = Math.max(0.05, cardRect.width / baseW);
+    const sy0 = Math.max(0.05, cardRect.height / baseH);
+    const isStackMode = global.matchMedia(STACK_MQ).matches;
     const cardIconEl = $('.lite-subject-icon', cardEl);
     const cardTitleEl = $('.lite-subject-name', cardEl);
     const cardArrowEl = $('.lite-subject-arrow', cardEl);
@@ -638,12 +656,16 @@
     const cardArrowRect = cardArrowEl ? shiftRect(cardArrowEl.getBoundingClientRect()) : null;
     const cardOrbitRect = cardOrbitEl ? shiftRect(cardOrbitEl.getBoundingClientRect()) : null;
     const cardWmRect = cardWmEl ? shiftRect(cardWmEl.getBoundingClientRect()) : null;
+    const wmW = cardWmEl ? cardWmEl.offsetWidth || 120 : 120;
+    const wmH = cardWmEl ? cardWmEl.offsetHeight || 120 : 120;
 
     const cardIconW = cardIconRect.width || 78;
     const cardTitlePx = cardTitleEl ? parseFloat(getComputedStyle(cardTitleEl).fontSize) || 23 : 23;
 
     const arrowW = cardArrowRect ? cardArrowRect.width : 50;
     const arrowH = cardArrowRect ? cardArrowRect.height : 50;
+
+    // Sau khi đã đọc xong toàn bộ rect, mới bắt đầu ghi style
     if (heroArrow) {
       heroArrow.style.left = '0px';
       heroArrow.style.top = '0px';
@@ -652,85 +674,97 @@
     }
 
     if (heroOrbit && cardOrbitRect) {
-      heroOrbit.style.left = `${(cardOrbitRect.left - cardRect.left - heroBorderL).toFixed(1)}px`;
-      heroOrbit.style.top = `${(cardOrbitRect.top - cardRect.top - heroBorderT).toFixed(1)}px`;
+      const orbitRelCx0 = cardOrbitRect.left + cardOrbitRect.width * 0.5 - cardRect.left;
+      const orbitRelCy0 = cardOrbitRect.top + cardOrbitRect.height * 0.5 - cardRect.top;
+      const localOrbitCx = orbitRelCx0 / sx0 - heroBorderL;
+      const localOrbitCy = orbitRelCy0 / sy0 - heroBorderT;
+      heroOrbit.style.left = `${(localOrbitCx - cardOrbitRect.width * 0.5).toFixed(1)}px`;
+      heroOrbit.style.top = `${(localOrbitCy - cardOrbitRect.height * 0.5).toFixed(1)}px`;
       heroOrbit.style.width = `${cardOrbitRect.width.toFixed(1)}px`;
       heroOrbit.style.height = `${cardOrbitRect.height.toFixed(1)}px`;
-      heroOrbit.style.transform = 'none';
+      heroOrbit.style.transform = `scale(${(1 / sx0).toFixed(4)}, ${(1 / sy0).toFixed(4)})`;
     }
 
+    const cardWmRot = isStackMode ? 'rotate(-8deg)' : 'rotate(-10deg)';
     if (heroCardWm && cardWmEl && cardWmRect) {
-      const wmW = cardWmEl.offsetWidth || 120;
-      const wmH = cardWmEl.offsetHeight || 120;
-      const wmCx = cardWmRect.left + cardWmRect.width * 0.5 - cardRect.left - heroBorderL;
-      const wmCy = cardWmRect.top + cardWmRect.height * 0.5 - cardRect.top - heroBorderT;
-      heroCardWm.style.left = `${(wmCx - wmW * 0.5).toFixed(1)}px`;
-      heroCardWm.style.top = `${(wmCy - wmH * 0.5).toFixed(1)}px`;
+      const wmRelCx0 = cardWmRect.left + cardWmRect.width * 0.5 - cardRect.left;
+      const wmRelCy0 = cardWmRect.top + cardWmRect.height * 0.5 - cardRect.top;
+      const localWmCx = wmRelCx0 / sx0 - heroBorderL;
+      const localWmCy = wmRelCy0 / sy0 - heroBorderT;
+      heroCardWm.style.left = `${(localWmCx - wmW * 0.5).toFixed(1)}px`;
+      heroCardWm.style.top = `${(localWmCy - wmH * 0.5).toFixed(1)}px`;
       heroCardWm.style.right = 'auto';
       heroCardWm.style.bottom = 'auto';
       heroCardWm.style.width = `${wmW}px`;
       heroCardWm.style.height = `${wmH}px`;
-      heroCardWm.style.transform = global.innerWidth <= 640 ? 'rotate(-8deg)' : 'rotate(-10deg)';
+      heroCardWm.style.transform = `scale(${(1 / sx0).toFixed(4)}, ${(1 / sy0).toFixed(4)}) ${cardWmRot}`;
     }
 
-    // Đo độ lệch vị trí tự nhiên của Emblem và Tên môn khi hero mang kích thước thẻ nhỏ (t = 0)
+    // Khóa kích thước layout của hero ở baseW × baseH (t = 1) và nội suy hoàn toàn bằng scale(sx, sy) trên GPU
+    if (heroSlot) heroSlot.style.height = `${heroRect.height}px`;
     hero.classList.add('is-morphing');
-    hero.style.transform = `translate3d(${cardRect.left.toFixed(2)}px, ${cardRect.top.toFixed(2)}px, 0)`;
-    hero.style.width = `${cardRect.width.toFixed(2)}px`;
-    hero.style.height = `${cardRect.height.toFixed(2)}px`;
+    hero.style.transformOrigin = '0 0';
+    hero.style.width = `${baseW.toFixed(2)}px`;
+    hero.style.height = `${baseH.toFixed(2)}px`;
     hero.style.opacity = '1';
+    if (heroTitle) heroTitle.style.whiteSpace = 'nowrap';
 
-    if (heroEmblem) heroEmblem.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
-    if (heroTitle) {
-      heroTitle.style.whiteSpace = 'nowrap';
-      heroTitle.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
-    }
-
-    const morphCoreRect0 = heroCore ? heroCore.getBoundingClientRect() : cardIconRect;
-    const morphTitleRect0 = heroTitle ? heroTitle.getBoundingClientRect() : cardTitleRect;
+    const coreRelCx = heroCoreRect1.left + heroCoreRect1.width * 0.5 - heroRect.left;
+    const coreRelCy = heroCoreRect1.top + heroCoreRect1.height * 0.5 - heroRect.top;
+    const titleRelCx = heroTitleRect1.left + heroTitleRect1.width * 0.5 - heroRect.left;
+    const titleRelCy = heroTitleRect1.top + heroTitleRect1.height * 0.5 - heroRect.top;
 
     const coreScale0 = cardIconW / heroCoreW;
-    const emblemDx0 =
-      cardIconRect.left + cardIconRect.width * 0.5 - (morphCoreRect0.left + morphCoreRect0.width * 0.5);
-    const emblemDy0 =
-      cardIconRect.top + cardIconRect.height * 0.5 - (morphCoreRect0.top + morphCoreRect0.height * 0.5);
+    const cardIconCx = cardIconRect.left + cardIconRect.width * 0.5;
+    const cardIconCy = cardIconRect.top + cardIconRect.height * 0.5;
+    const heroCoreCx1 = heroRect.left + coreRelCx;
+    const heroCoreCy1 = heroRect.top + coreRelCy;
 
     const titleScale0 = cardTitlePx / heroTitlePx;
-    const titleDx0 =
-      cardTitleRect.left + cardTitleRect.width * 0.5 - (morphTitleRect0.left + morphTitleRect0.width * 0.5);
-    const titleDy0 =
-      cardTitleRect.top + cardTitleRect.height * 0.5 - (morphTitleRect0.top + morphTitleRect0.height * 0.5);
+    const cardTitleCx = cardTitleRect.left + cardTitleRect.width * 0.5;
+    const cardTitleCy = cardTitleRect.top + cardTitleRect.height * 0.5;
+    const heroTitleCx1 = heroRect.left + titleRelCx;
+    const heroTitleCy1 = heroRect.top + titleRelCy;
 
-    const cardInnerW = Math.max(1, cardRect.width - heroBorderL * 2);
-    const cardInnerH = Math.max(1, cardRect.height - heroBorderT * 2);
-    const arrowRelCx0 = cardArrowRect
-      ? cardArrowRect.left - cardRect.left - heroBorderL + arrowW * 0.5
-      : cardInnerW * 0.5;
-    const arrowRelCy0 = cardArrowRect
-      ? cardArrowRect.top - cardRect.top - heroBorderT + arrowH * 0.5
-      : cardInnerH * 0.78;
-    const arrowRx = arrowRelCx0 / cardInnerW;
-    const arrowRy = arrowRelCy0 / cardInnerH;
+    const cardArrowCx = cardArrowRect
+      ? cardArrowRect.left + arrowW * 0.5
+      : cardRect.left + cardRect.width * 0.5;
+    const cardArrowCy = cardArrowRect
+      ? cardArrowRect.top + arrowH * 0.5
+      : cardRect.top + cardRect.height * 0.78;
+    const arrowRx = (cardArrowCx - cardRect.left) / Math.max(1, cardRect.width);
+    const arrowRy = (cardArrowCy - cardRect.top) / Math.max(1, cardRect.height);
+    const arrowAx = arrowRx * baseW - (heroBorderL + arrowW * 0.5);
+    const arrowAy = arrowRy * baseH - (heroBorderT + arrowH * 0.5);
 
     function applyFrame(t) {
       const u = 1 - t;
       const curLeft = cardRect.left + (heroRect.left - cardRect.left) * t;
       const curTop = cardRect.top + (heroRect.top - cardRect.top) * t;
-      const curW = cardRect.width + (heroRect.width - cardRect.width) * t;
-      const curH = cardRect.height + (heroRect.height - cardRect.height) * t;
+      const curW = cardRect.width + (baseW - cardRect.width) * t;
+      const curH = cardRect.height + (baseH - cardRect.height) * t;
+      const sx = curW / baseW;
+      const sy = curH / baseH;
 
-      hero.style.transform = `translate3d(${curLeft.toFixed(2)}px, ${curTop.toFixed(2)}px, 0)`;
-      hero.style.width = `${curW.toFixed(2)}px`;
-      hero.style.height = `${curH.toFixed(2)}px`;
+      hero.style.transform = `translate3d(${curLeft.toFixed(2)}px, ${curTop.toFixed(2)}px, 0) scale(${sx.toFixed(5)}, ${sy.toFixed(5)})`;
+      hero.style.borderRadius = `${(baseRadius / sx).toFixed(2)}px / ${(baseRadius / sy).toFixed(2)}px`;
 
       if (heroEmblem) {
         const es = coreScale0 + (1 - coreScale0) * t;
-        heroEmblem.style.transform = `translate3d(${(emblemDx0 * u).toFixed(2)}px, ${(emblemDy0 * u).toFixed(2)}px, 0) scale(${es.toFixed(4)})`;
+        const desiredCx = cardIconCx + (heroCoreCx1 - cardIconCx) * t;
+        const desiredCy = cardIconCy + (heroCoreCy1 - cardIconCy) * t;
+        const tx = (desiredCx - curLeft) / sx - coreRelCx;
+        const ty = (desiredCy - curTop) / sy - coreRelCy;
+        heroEmblem.style.transform = `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) scale(${(es / sx).toFixed(4)}, ${(es / sy).toFixed(4)})`;
       }
 
       if (heroTitle) {
         const ts = titleScale0 + (1 - titleScale0) * t;
-        heroTitle.style.transform = `translate3d(${(titleDx0 * u).toFixed(2)}px, ${(titleDy0 * u).toFixed(2)}px, 0) scale(${ts.toFixed(4)})`;
+        const desiredCx = cardTitleCx + (heroTitleCx1 - cardTitleCx) * t;
+        const desiredCy = cardTitleCy + (heroTitleCy1 - cardTitleCy) * t;
+        const tx = (desiredCx - curLeft) / sx - titleRelCx;
+        const ty = (desiredCy - curTop) / sy - titleRelCy;
+        heroTitle.style.transform = `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) scale(${(ts / sx).toFixed(4)}, ${(ts / sy).toFixed(4)})`;
       }
 
       if (heroRings.length) {
@@ -743,27 +777,33 @@
       }
 
       if (heroArrow) {
-        const curInnerW = curW - heroBorderL * 2;
-        const curInnerH = curH - heroBorderT * 2;
-        const ax = arrowRx * curInnerW - arrowW * 0.5;
-        const ay = arrowRy * curInnerH - arrowH * 0.5;
         const arrowOp = Math.max(0, Math.min(1, (u - 0.14) / 0.86));
         const arrowScale = 0.6 + 0.4 * arrowOp;
         heroArrow.style.opacity = arrowOp.toFixed(3);
-        heroArrow.style.transform = `translate3d(${ax.toFixed(2)}px, ${ay.toFixed(2)}px, 0) scale(${arrowScale.toFixed(3)})`;
+        heroArrow.style.transform = `translate3d(${arrowAx.toFixed(2)}px, ${arrowAy.toFixed(2)}px, 0) scale(${(arrowScale / sx).toFixed(4)}, ${(arrowScale / sy).toFixed(4)})`;
       }
 
-      if (heroOrbit) heroOrbit.style.opacity = u.toFixed(3);
-      if (heroWm) heroWm.style.opacity = (0.055 * t).toFixed(3);
-      if (heroCardWm) heroCardWm.style.opacity = (0.065 * u).toFixed(3);
+      if (heroOrbit) {
+        heroOrbit.style.opacity = u.toFixed(3);
+        heroOrbit.style.transform = `scale(${(1 / sx).toFixed(4)}, ${(1 / sy).toFixed(4)})`;
+      }
+      if (heroWm) {
+        heroWm.style.opacity = (0.055 * t).toFixed(3);
+        heroWm.style.transform = `translate(-50%, -50%) scale(${(1 / sx).toFixed(4)}, ${(1 / sy).toFixed(4)}) rotate(-8deg)`;
+      }
+      if (heroCardWm) {
+        heroCardWm.style.opacity = (0.065 * u).toFixed(3);
+        heroCardWm.style.transform = `scale(${(1 / sx).toFixed(4)}, ${(1 / sy).toFixed(4)}) ${cardWmRot}`;
+      }
     }
 
     function cleanup() {
       hero.classList.remove('is-morphing');
+      if (heroSlot) heroSlot.style.height = '';
       if (heroTitle) heroTitle.style.whiteSpace = '';
-      gsap.set(hero, { clearProps: 'left,top,width,height,transform,opacity' });
+      gsap.set(hero, { clearProps: 'left,top,width,height,borderRadius,transform,transformOrigin,opacity' });
       gsap.set(animChildren, {
-        clearProps: 'width,height,padding,fontSize,transform,opacity,visibility,left,top,right,bottom',
+        clearProps: 'width,height,padding,fontSize,transform,transformOrigin,opacity,visibility,left,top,right,bottom',
       });
       if (heroCardWm) heroCardWm.style.opacity = '0';
     }
@@ -771,60 +811,169 @@
     return { cardRect, heroRect, applyFrame, cleanup };
   }
 
+  function lockOutgoingWrap(wrapEl, rect) {
+    if (!wrapEl || !rect) return;
+    wrapEl.style.setProperty('position', 'fixed', 'important');
+    wrapEl.style.setProperty('left', `${rect.left}px`, 'important');
+    wrapEl.style.setProperty('top', `${rect.top}px`, 'important');
+    wrapEl.style.setProperty('right', 'auto', 'important');
+    wrapEl.style.setProperty('bottom', 'auto', 'important');
+    wrapEl.style.width = `${rect.width}px`;
+    wrapEl.style.height = `${rect.height}px`;
+  }
+
+  function unlockOutgoingWrap(wrapEl) {
+    if (!wrapEl) return;
+    wrapEl.style.removeProperty('position');
+    wrapEl.style.removeProperty('left');
+    wrapEl.style.removeProperty('top');
+    wrapEl.style.removeProperty('right');
+    wrapEl.style.removeProperty('bottom');
+    wrapEl.style.width = '';
+    wrapEl.style.height = '';
+  }
+
+  function completeStageMorph() {
+    if (!stageMorphTl) return;
+    const tl = stageMorphTl;
+    tl.progress(tl.reversed() ? 0 : 1);
+    if (stageMorphTl === tl) {
+      if (tl._cleanupFn) tl._cleanupFn(tl.reversed());
+      tl.kill();
+      stageMorphTl = null;
+    }
+  }
+
+  function completeDetailMorph() {
+    if (!detailTl) return;
+    const tl = detailTl;
+    tl.progress(tl.reversed() ? 0 : 1);
+    if (detailTl === tl) {
+      if (tl._cleanupFn) tl._cleanupFn(tl.reversed());
+      tl.kill();
+      detailTl = null;
+    }
+  }
+
+  function finishStage(finalState, morpher, ctx) {
+    const homeStage = $('#liteHomeStage');
+    const subjectWrap = $('#liteSubjectStage');
+    if (morpher) morpher.cleanup();
+    if (homeStage) unlockOutgoingWrap(homeStage);
+    if (subjectWrap) unlockOutgoingWrap(subjectWrap);
+    clearAllHomeVisibility(true);
+
+    if (homeStage) {
+      const allHomeEls = [$('.lite-home-banner', homeStage), ...$$('.lite-subject-card', homeStage)].filter(Boolean);
+      if (gsap && allHomeEls.length) gsap.set(allHomeEls, { clearProps: 'transform,opacity,visibility' });
+      homeStage.classList.remove('lite-stage-outgoing');
+    }
+    if (subjectWrap) {
+      const secCardsNow = $$('.lite-section-card', subjectWrap);
+      if (gsap && secCardsNow.length) gsap.set(secCardsNow, { clearProps: 'transform,opacity,visibility' });
+      subjectWrap.classList.remove('lite-stage-outgoing');
+    }
+
+    if (finalState === 'subject') {
+      if (homeStage) homeStage.hidden = true;
+      if (subjectWrap) subjectWrap.hidden = false;
+      const targetScroll = ctx && typeof ctx.subjectScrollY === 'number' ? ctx.subjectScrollY : 0;
+      if (global.scrollY !== targetScroll) {
+        global.scrollTo({ top: targetScroll, left: 0, behavior: 'instant' });
+      }
+    } else {
+      if (subjectWrap) subjectWrap.hidden = true;
+      if (homeStage) homeStage.hidden = false;
+      if (global.scrollY !== homeScrollY) {
+        global.scrollTo({ top: homeScrollY, left: 0, behavior: 'instant' });
+      }
+    }
+
+    setStageMorphing(false);
+    stageMorphTl = null;
+    stageDir = null;
+    stageSubject = null;
+  }
+
   function transitionHomeToSubject(subjectName, animate = true) {
     const homeStage = $('#liteHomeStage');
     const subjectWrap = $('#liteSubjectStage');
     if (!homeStage || !subjectWrap) return;
 
-    if (stageMorphTl) {
-      stageMorphTl.kill();
-      stageMorphTl = null;
-      setStageMorphing(false);
+    if (stageMorphTl && animate && gsap && !isReduced()) {
+      if (stageSubject === subjectName) {
+        stageDir = 'open';
+        Theme.applyTheme(subjectName);
+        showBackButton(true);
+        if (stageMorphTl._origin === 'open') stageMorphTl.play();
+        else stageMorphTl.reverse();
+        return;
+      }
+      completeStageMorph();
+    } else if (stageMorphTl) {
+      completeStageMorph();
+    }
+
+    if (!homeStage.hidden) {
+      homeScrollY = animate ? global.scrollY : 0;
+    }
+
+    const allHomeElsInit = [$('.lite-home-banner', homeStage), ...$$('.lite-subject-card', homeStage)].filter(Boolean);
+    if (gsap && allHomeElsInit.length) {
+      gsap.killTweensOf(allHomeElsInit);
+      gsap.set(allHomeElsInit, { clearProps: 'transform,opacity,visibility' });
     }
 
     const clickedCard = getHomeCard(subjectName);
     clearAllHomeVisibility(true);
     const startCardRect = clickedCard ? clickedCard.getBoundingClientRect() : null;
+    const startHomeRect = !homeStage.hidden ? homeStage.getBoundingClientRect() : null;
 
-    if (global.scrollY > 0) global.scrollTo(0, 0);
+    if (global.scrollY > 0) global.scrollTo({ top: 0, left: 0, behavior: 'instant' });
 
     Theme.applyTheme(subjectName);
     showBackButton(true);
     populateSubjectStage(subjectName);
 
     if (!animate || !gsap || isReduced() || !clickedCard || !startCardRect || startCardRect.width < 10) {
+      unlockOutgoingWrap(homeStage);
+      unlockOutgoingWrap(subjectWrap);
       clearAllHomeVisibility(true);
       homeStage.classList.remove('lite-stage-outgoing');
       homeStage.hidden = true;
       subjectWrap.classList.remove('lite-stage-outgoing');
       subjectWrap.hidden = false;
+      stageDir = null;
+      stageSubject = null;
       return;
     }
 
     homeStage.classList.add('lite-stage-outgoing');
+    if (startHomeRect) lockOutgoingWrap(homeStage, startHomeRect);
+    unlockOutgoingWrap(subjectWrap);
     subjectWrap.classList.remove('lite-stage-outgoing');
     subjectWrap.hidden = false;
 
     const heroSlot = $('.lite-hero-slot', subjectWrap);
     const hero = $('.lite-subject-hero', subjectWrap);
     const secCards = $$('.lite-section-card', subjectWrap);
+    const secRects = secCards.map((card) => card.getBoundingClientRect());
 
     const morpher = buildHeroCardMorpher(hero, heroSlot, clickedCard, null, startCardRect);
     morpher.applyFrame(0);
     clickedCard.style.visibility = 'hidden';
 
     setStageMorphing(true);
+    stageDir = 'open';
+    stageSubject = subjectName;
     const morphState = { t: 0 };
+    const ctx = { subjectScrollY: 0 };
     const tl = gsap.timeline({
-      onComplete: () => {
-        morpher.cleanup();
-        clearAllHomeVisibility(true);
-        homeStage.hidden = true;
-        homeStage.classList.remove('lite-stage-outgoing');
-        setStageMorphing(false);
-        stageMorphTl = null;
-      },
+      onComplete: () => finishStage('subject', morpher, ctx),
+      onReverseComplete: () => finishStage('home', morpher, ctx),
     });
+    tl._origin = 'open';
+    tl._cleanupFn = (isRev) => finishStage(isRev ? 'home' : 'subject', morpher, ctx);
     stageMorphTl = tl;
 
     // 1. Khung Môn giữ nguyên độ đặc 100%, trượt & co giãn GPU mượt đều (cùng thời gian cho mọi môn)
@@ -864,7 +1013,7 @@
       const startCy = startCardRect.top + startCardRect.height * 0.5;
 
       secCards.forEach((card, i) => {
-        const r = card.getBoundingClientRect();
+        const r = secRects[i];
         const cx = r.left + r.width * 0.5;
         const cy = r.top + r.height * 0.5;
         const staggerDelay = i * 0.025;
@@ -879,7 +1028,6 @@
             autoAlpha: 1,
             duration: STAGE_OPEN_DURATION - staggerDelay,
             ease: STAGE_EASE,
-            clearProps: 'transform,opacity,visibility',
           },
           staggerDelay
         );
@@ -892,40 +1040,59 @@
     const subjectWrap = $('#liteSubjectStage');
     if (!homeStage || !subjectWrap) return;
 
-    if (stageMorphTl) {
-      stageMorphTl.kill();
-      stageMorphTl = null;
-      setStageMorphing(false);
+    if (stageMorphTl && animate && gsap && !isReduced()) {
+      if (stageSubject === prevSubject) {
+        stageDir = 'close';
+        Theme.applyTheme('home');
+        showBackButton(false);
+        if (stageMorphTl._origin === 'open') stageMorphTl.reverse();
+        else stageMorphTl.play();
+        return;
+      }
+      completeStageMorph();
+    } else if (stageMorphTl) {
+      completeStageMorph();
     }
 
     Theme.applyTheme('home');
     showBackButton(false);
 
+    const subjectScrollY = global.scrollY;
     const hero = $('.lite-subject-hero', subjectWrap);
     const heroSlot = $('.lite-hero-slot', subjectWrap);
     const startHeroRect = hero ? hero.getBoundingClientRect() : null;
+    const startWrapRect = subjectWrap.getBoundingClientRect();
     const secCards = $$('.lite-section-card', subjectWrap);
-
-    if (global.scrollY > 0) global.scrollTo(0, 0);
+    const secRects = secCards.map((card) => card.getBoundingClientRect());
 
     if (!animate || !gsap || isReduced() || !hero || !startHeroRect || startHeroRect.width < 10) {
       if (hero) {
         hero.classList.remove('is-morphing');
         gsap && gsap.set(hero, { clearProps: 'left,top,width,height,transform,opacity' });
       }
+      if (heroSlot) heroSlot.style.height = '';
+      unlockOutgoingWrap(subjectWrap);
+      unlockOutgoingWrap(homeStage);
       subjectWrap.hidden = true;
       subjectWrap.classList.remove('lite-stage-outgoing');
       homeStage.hidden = false;
       homeStage.classList.remove('lite-stage-outgoing');
+      global.scrollTo({ top: homeScrollY, left: 0, behavior: 'instant' });
       clearAllHomeVisibility(true);
       const allHomeEls = [$('.lite-home-banner', homeStage), ...$$('.lite-subject-card', homeStage)].filter(Boolean);
       if (gsap && allHomeEls.length) gsap.set(allHomeEls, { clearProps: 'transform,opacity,visibility' });
+      stageDir = null;
+      stageSubject = null;
       return;
     }
 
     subjectWrap.classList.add('lite-stage-outgoing');
+    lockOutgoingWrap(subjectWrap, startWrapRect);
+    unlockOutgoingWrap(homeStage);
     homeStage.classList.remove('lite-stage-outgoing');
     homeStage.hidden = false;
+
+    global.scrollTo({ top: homeScrollY, left: 0, behavior: 'instant' });
 
     const allHomeEls = [$('.lite-home-banner', homeStage), ...$$('.lite-subject-card', homeStage)].filter(Boolean);
     if (allHomeEls.length) gsap.set(allHomeEls, { clearProps: 'transform,opacity,visibility' });
@@ -933,6 +1100,7 @@
 
     const targetCard = getHomeCard(prevSubject);
     if (!targetCard) {
+      unlockOutgoingWrap(subjectWrap);
       subjectWrap.hidden = true;
       subjectWrap.classList.remove('lite-stage-outgoing');
       return;
@@ -944,18 +1112,16 @@
     targetCard.style.visibility = 'hidden';
 
     setStageMorphing(true);
+    stageDir = 'close';
+    stageSubject = prevSubject;
     const morphState = { t: 1 };
+    const ctx = { subjectScrollY };
     const tl = gsap.timeline({
-      onComplete: () => {
-        targetCard.style.visibility = '';
-        morpher.cleanup();
-        clearAllHomeVisibility(true);
-        subjectWrap.hidden = true;
-        subjectWrap.classList.remove('lite-stage-outgoing');
-        setStageMorphing(false);
-        stageMorphTl = null;
-      },
+      onComplete: () => finishStage('home', morpher, ctx),
+      onReverseComplete: () => finishStage('subject', morpher, ctx),
     });
+    tl._origin = 'close';
+    tl._cleanupFn = (isRev) => finishStage(isRev ? 'subject' : 'home', morpher, ctx);
     stageMorphTl = tl;
 
     // 1. 3 khung Phân hệ bên phải thu gọn trực tiếp vào đúng tâm thẻ môn đích (ngược lại hệt lúc mở, nằm dưới khung Môn)
@@ -964,7 +1130,7 @@
       const destCy = destCardRect.top + destCardRect.height * 0.5;
 
       secCards.forEach((card, i) => {
-        const r = card.getBoundingClientRect();
+        const r = secRects[i];
         const cx = r.left + r.width * 0.5;
         const cy = r.top + r.height * 0.5;
         const staggerDelay = i * 0.015;
@@ -1011,7 +1177,6 @@
             autoAlpha: 1,
             duration: STAGE_CLOSE_DURATION - delay,
             ease: STAGE_EASE,
-            clearProps: 'transform,opacity,visibility',
           },
           delay
         );
@@ -1020,6 +1185,38 @@
   }
 
   // ---------- 3. Bảng phóng to dạng List ở giữa màn hình (Biến hình đặc opacity = 1 từ khung Phân hệ) ----------
+  function getScrollbarWidth() {
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute;top:-9999px;width:100px;height:100px;overflow:scroll;visibility:hidden;';
+    document.body.appendChild(probe);
+    const sbw = probe.offsetWidth - probe.clientWidth;
+    probe.remove();
+    return Math.max(0, sbw);
+  }
+
+  function updateScrollLockVar(hadVisibleScrollbar) {
+    const hasOverflow =
+      hadVisibleScrollbar !== undefined
+        ? hadVisibleScrollbar
+        : document.body.scrollHeight > global.innerHeight;
+    const sbw = hasOverflow ? getScrollbarWidth() : 0;
+    document.documentElement.style.setProperty('--sbw', `${sbw}px`);
+  }
+
+  function lockScroll() {
+    if (document.body.classList.contains('scroll-locked')) return;
+    const hadVisibleScrollbar =
+      global.innerWidth - document.documentElement.clientWidth > 0 ||
+      document.documentElement.scrollHeight > global.innerHeight;
+    updateScrollLockVar(hadVisibleScrollbar);
+    document.body.classList.add('scroll-locked');
+  }
+
+  function unlockScroll() {
+    document.body.classList.remove('scroll-locked');
+    document.documentElement.style.removeProperty('--sbw');
+  }
+
   function destroyDetailLenis() {
     if (detailLenis) {
       detailLenis.destroy();
@@ -1081,9 +1278,60 @@
     };
   }
 
+  function measurePanelMorphRest(panel, rectOverride) {
+    if (!panel) return null;
+    const h2 = $('#liteDetailTitle', panel);
+    const desc = $('.lite-panel-desc', panel);
+    if (!h2 || !desc) return null;
+    const targetRect = rectOverride || panel.getBoundingClientRect();
+    const h2Rect = h2.getBoundingClientRect();
+    const pDescRect = desc.getBoundingClientRect();
+    const baseRadius = parseFloat(getComputedStyle(panel).borderTopLeftRadius) || 26;
+    panel._morphRest = {
+      targetRect,
+      baseRadius,
+      targetTitlePx: parseFloat(getComputedStyle(h2).fontSize) || 28,
+      targetDescPx: parseFloat(getComputedStyle(desc).fontSize) || 15,
+      panelTitleLeft: h2Rect.left - targetRect.left,
+      panelTitleTop: h2Rect.top - targetRect.top,
+      panelDescLeft: pDescRect.left - targetRect.left,
+      panelDescTop: pDescRect.top - targetRect.top,
+      borderL: panel.clientLeft || 1.5,
+      borderT: panel.clientTop || 1.5,
+      borderR: panel.clientLeft || 1.5,
+    };
+    return panel._morphRest;
+  }
+
+  function setupDetailMorphChrome(panel, compact, modalRect) {
+    const rest = panel._morphRest;
+    if (!rest || !compact) return;
+    const baseW = Math.max(1, modalRect.width);
+    const baseH = Math.max(1, modalRect.height);
+    panel.style.transformOrigin = '0 0';
+    panel.style.width = `${baseW.toFixed(2)}px`;
+    panel.style.height = `${baseH.toFixed(2)}px`;
+
+    const morphIcon = $('.lite-morph-sec-icon', panel);
+    const morphSide = $('.lite-morph-sec-side', panel);
+    const borderL = rest.borderL || 1.5;
+    const borderT = rest.borderT || 1.5;
+    const borderR = rest.borderR || 1.5;
+    if (morphIcon) {
+      morphIcon.style.left = `${(compact.iconLeft - borderL).toFixed(1)}px`;
+      morphIcon.style.top = `${(compact.iconTop - borderT).toFixed(1)}px`;
+      morphIcon.style.width = `${compact.iconW.toFixed(1)}px`;
+      morphIcon.style.height = `${compact.iconH.toFixed(1)}px`;
+    }
+    if (morphSide) {
+      morphSide.style.right = `${(compact.sideRight - borderR).toFixed(1)}px`;
+      morphSide.style.top = `${(compact.sideTop - borderT).toFixed(1)}px`;
+    }
+  }
+
   /**
    * Nội suy liên tục giữa Khung Phân hệ (t = 0) và Bảng List (t = 1) hoàn toàn trên GPU:
-   * không đổi fontSize (tránh rung glyph & reflow), giữ opacity = 1 suốt hành trình.
+   * không đổi width/height hay fontSize trong onUpdate (tránh reflow), giữ opacity = 1 suốt hành trình.
    */
   function applyDetailMorphFrame(panel, compact, modalRect, t) {
     const rest = panel._morphRest;
@@ -1098,61 +1346,75 @@
     const morphIcon = $('.lite-morph-sec-icon', panel);
     const morphSide = $('.lite-morph-sec-side', panel);
 
+    const baseW = Math.max(1, modalRect.width);
+    const baseH = Math.max(1, modalRect.height);
+    const baseRadius = rest.baseRadius || 26;
     const curLeft = compact.left + (modalRect.left - compact.left) * t;
     const curTop = compact.top + (modalRect.top - compact.top) * t;
-    const curW = compact.width + (modalRect.width - compact.width) * t;
-    const curH = compact.height + (modalRect.height - compact.height) * t;
+    const curW = compact.width + (baseW - compact.width) * t;
+    const curH = compact.height + (baseH - compact.height) * t;
+    const sx = curW / baseW;
+    const sy = curH / baseH;
 
-    panel.style.transform = `translate3d(${curLeft.toFixed(2)}px, ${curTop.toFixed(2)}px, 0)`;
-    panel.style.width = `${curW.toFixed(2)}px`;
-    panel.style.height = `${curH.toFixed(2)}px`;
+    panel.style.transform = `translate3d(${curLeft.toFixed(2)}px, ${curTop.toFixed(2)}px, 0) scale(${sx.toFixed(5)}, ${sy.toFixed(5)})`;
+    panel.style.borderRadius = `${(baseRadius / sx).toFixed(2)}px / ${(baseRadius / sy).toFixed(2)}px`;
     panel.style.opacity = '1';
 
     if (h2) {
-      const titleDx = compact.titleLeft - rest.panelTitleLeft;
-      const titleDy = compact.titleTop - rest.panelTitleTop;
+      const desiredTitleLeft = rest.panelTitleLeft + (compact.titleLeft - rest.panelTitleLeft) * u;
+      const desiredTitleTop = rest.panelTitleTop + (compact.titleTop - rest.panelTitleTop) * u;
+      const titleTx = desiredTitleLeft / sx - rest.panelTitleLeft;
+      const titleTy = desiredTitleTop / sy - rest.panelTitleTop;
       const titleScale0 = compact.titlePx / rest.targetTitlePx;
       const ts = titleScale0 + (1 - titleScale0) * t;
-      h2.style.transform = `translate3d(${(titleDx * u).toFixed(2)}px, ${(titleDy * u).toFixed(2)}px, 0) scale(${ts.toFixed(4)})`;
+      h2.style.transform = `translate3d(${titleTx.toFixed(2)}px, ${titleTy.toFixed(2)}px, 0) scale(${(ts / sx).toFixed(4)}, ${(ts / sy).toFixed(4)})`;
       h2.style.opacity = compact.titleMultiLine ? Math.max(0.22, t).toFixed(3) : '1';
     }
 
     if (desc) {
-      const descDx = compact.descLeft - rest.panelDescLeft;
-      const descDy = compact.descTop - rest.panelDescTop;
+      const desiredDescLeft = rest.panelDescLeft + (compact.descLeft - rest.panelDescLeft) * u;
+      const desiredDescTop = rest.panelDescTop + (compact.descTop - rest.panelDescTop) * u;
+      const descTx = desiredDescLeft / sx - rest.panelDescLeft;
+      const descTy = desiredDescTop / sy - rest.panelDescTop;
       const descScale0 = compact.descPx / rest.targetDescPx;
       const ds = descScale0 + (1 - descScale0) * t;
-      desc.style.transform = `translate3d(${(descDx * u).toFixed(2)}px, ${(descDy * u).toFixed(2)}px, 0) scale(${ds.toFixed(4)})`;
+      desc.style.transform = `translate3d(${descTx.toFixed(2)}px, ${descTy.toFixed(2)}px, 0) scale(${(ds / sx).toFixed(4)}, ${(ds / sy).toFixed(4)})`;
       desc.style.opacity = compact.descMultiLine ? Math.max(0.18, t).toFixed(3) : '1';
     }
 
-    const borderL = rest.borderL || 1.5;
-    const borderT = rest.borderT || 1.5;
-    const borderR = rest.borderR || 1.5;
     const cardChromeOp = Math.max(0, Math.min(1, (u - 0.35) / 0.65));
     const cardChromeScale = 0.78 + 0.22 * cardChromeOp;
     if (morphIcon) {
-      morphIcon.style.left = `${(compact.iconLeft - borderL).toFixed(1)}px`;
-      morphIcon.style.top = `${(compact.iconTop - borderT).toFixed(1)}px`;
-      morphIcon.style.width = `${compact.iconW.toFixed(1)}px`;
-      morphIcon.style.height = `${compact.iconH.toFixed(1)}px`;
+      const iconRelCx = compact.iconLeft + compact.iconW * 0.5;
+      const iconRelCy = compact.iconTop + compact.iconH * 0.5;
+      const iconTx = iconRelCx * (1 / sx - 1);
+      const iconTy = iconRelCy * (1 / sy - 1);
       morphIcon.style.opacity = cardChromeOp.toFixed(3);
-      morphIcon.style.transform = `scale(${cardChromeScale.toFixed(3)})`;
+      morphIcon.style.transform = `translate3d(${iconTx.toFixed(2)}px, ${iconTy.toFixed(2)}px, 0) scale(${(cardChromeScale / sx).toFixed(4)}, ${(cardChromeScale / sy).toFixed(4)})`;
     }
     if (morphSide) {
-      morphSide.style.right = `${(compact.sideRight - borderR).toFixed(1)}px`;
-      morphSide.style.top = `${(compact.sideTop - borderT).toFixed(1)}px`;
+      const sideTx = compact.sideRight * (1 - 1 / sx);
+      const sideTy = compact.sideTop * (1 / sy - 1);
       morphSide.style.opacity = cardChromeOp.toFixed(3);
-      morphSide.style.transform = `scale(${cardChromeScale.toFixed(3)})`;
+      morphSide.style.transform = `translate3d(${sideTx.toFixed(2)}px, ${sideTy.toFixed(2)}px, 0) scale(${(cardChromeScale / sx).toFixed(4)}, ${(cardChromeScale / sy).toFixed(4)})`;
     }
 
     const modalChromeOp = Math.max(0, Math.min(1, (t - 0.28) / 0.72));
-    [pills, closeBtn, extra].forEach((el) => {
-      if (el) el.style.opacity = modalChromeOp.toFixed(3);
-    });
+    if (pills) {
+      pills.style.opacity = modalChromeOp.toFixed(3);
+      pills.style.transform = `scale(${(1 / sx).toFixed(4)}, ${(1 / sy).toFixed(4)})`;
+    }
+    if (closeBtn) {
+      closeBtn.style.opacity = modalChromeOp.toFixed(3);
+      closeBtn.style.transform = `scale(${(1 / sx).toFixed(4)}, ${(1 / sy).toFixed(4)})`;
+    }
+    if (extra) {
+      extra.style.opacity = modalChromeOp.toFixed(3);
+      extra.style.transform = `scale(1, ${(sx / sy).toFixed(4)})`;
+    }
   }
 
-  function renderDetailRows(listEl, subjectName, sec, items, query) {
+  function renderDetailRows(listEl, subjectName, sec, items, query, animateRows = true) {
     const q = (query || '').trim().toLowerCase();
     const filtered = q
       ? items.filter(
@@ -1236,15 +1498,15 @@
           gsap.to(go, { x: 3, duration: 0.3, ease: 'appleBounce', overwrite: 'auto' });
         });
         row.addEventListener('pointerleave', () => {
-          gsap.to(row, { x: 0, duration: 0.28, ease: 'appleSpring', overwrite: 'auto' });
-          gsap.to(idxBadge, { scale: 1, rotation: 0, duration: 0.28, ease: 'appleSpring', overwrite: 'auto' });
-          gsap.to(go, { x: 0, duration: 0.28, ease: 'appleSpring', overwrite: 'auto' });
+          gsap.to(row, { x: 0, scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
+          gsap.to(idxBadge, { scale: 1, rotation: 0, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
+          gsap.to(go, { x: 0, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
         });
       }
 
       listEl.appendChild(row);
 
-      if (gsap && !isReduced()) {
+      if (animateRows && gsap && !isReduced() && n < 10) {
         gsap.fromTo(
           row,
           { y: 10, autoAlpha: 0 },
@@ -1254,17 +1516,77 @@
     });
   }
 
+  function finishDetailOpenState(overlayEl) {
+    const panel = overlayEl ? $('.lite-detail-panel', overlayEl) : null;
+    if (panel) {
+      const h2 = $('#liteDetailTitle', panel);
+      const desc = $('.lite-panel-desc', panel);
+      const pills = $('.lite-pills', panel);
+      const closeBtn = $('.lite-detail-close', panel);
+      const extra = $('.lite-detail-extra', panel);
+      const morphIcon = $('.lite-morph-sec-icon', panel);
+      const morphSide = $('.lite-morph-sec-side', panel);
+      panel.classList.remove('is-morphing');
+      if (gsap) {
+        gsap.set(panel, { clearProps: 'left,top,width,height,padding,borderRadius,transform,transformOrigin,opacity' });
+        gsap.set([h2, desc, pills, closeBtn, extra].filter(Boolean), { clearProps: 'fontSize,transform,transformOrigin,opacity,visibility' });
+        gsap.set([morphIcon, morphSide].filter(Boolean), { clearProps: 'transform,opacity,left,right,top,width,height' });
+      }
+    }
+    if (overlayEl) overlayEl.style.pointerEvents = '';
+    detailClosing = false;
+    detailTl = null;
+  }
+
+  function finishDetailCloseState(overlayEl) {
+    detailTl = null;
+    detailOpen = false;
+    detailClosing = false;
+    detailSubject = null;
+    detailSection = null;
+    document.body.classList.remove('detail-open');
+    restoreActiveSectionCard();
+    if (overlayEl) {
+      overlayEl.hidden = true;
+      overlayEl.style.backgroundColor = '';
+      overlayEl.style.pointerEvents = '';
+      overlayEl.replaceChildren();
+    }
+    unlockScroll();
+  }
+
   function openDetailModal(subjectName, sectionKey, animate = true) {
     const overlayEl = $('#liteDetailOverlay');
     const sec = SUBJECT_SECTIONS.find((s) => s.key === sectionKey);
     if (!overlayEl || !sec || !SUBJECTS[subjectName]) return;
 
-    clearTimeout(detailDescTimer);
+    if (
+      animate &&
+      gsap &&
+      !isReduced() &&
+      detailOpen &&
+      detailTl &&
+      detailSubject === subjectName &&
+      detailSection === sectionKey &&
+      (detailClosing || detailTl.reversed())
+    ) {
+      detailClosing = false;
+      document.body.classList.add('detail-open');
+      overlayEl.style.pointerEvents = '';
+      const listWrapExisting = $('.lite-list-wrap', overlayEl);
+      const listElExisting = $('.lite-list', overlayEl);
+      if (!detailLenis && listWrapExisting && listElExisting) {
+        detailLenis = attachSmoothScroll(listWrapExisting, listElExisting);
+      }
+      if (detailTl._origin === 'open') detailTl.play();
+      else detailTl.reverse();
+      $('.lite-detail-close', overlayEl)?.focus({ preventScroll: true });
+      return;
+    }
+
     destroyDetailLenis();
     if (stageMorphTl) {
-      stageMorphTl.progress(1).kill();
-      stageMorphTl = null;
-      setStageMorphing(false);
+      completeStageMorph();
     }
     if (detailTl) {
       detailTl.kill();
@@ -1276,11 +1598,15 @@
     const anchorCard = $(`.lite-section-card[data-key="${sectionKey}"]`, $('#liteSubjectStage'));
     activeSectionCardEl = anchorCard;
     if (activeSectionCardEl) resetCardTransforms(activeSectionCardEl);
+    lockScroll();
     const compact = readSectionCardSpec(activeSectionCardEl);
 
     detailOpen = true;
     detailClosing = false;
+    detailSubject = subjectName;
+    detailSection = sectionKey;
     document.body.classList.add('detail-open');
+    overlayEl.style.pointerEvents = '';
 
     overlayEl.replaceChildren();
     overlayEl.hidden = false;
@@ -1333,7 +1659,7 @@
         gsap.to(closeBtn, { scale: 1.16, rotation: 90, duration: 0.34, ease: 'back.out(2.2)', overwrite: 'auto' });
       });
       closeBtn.addEventListener('pointerleave', () => {
-        gsap.to(closeBtn, { scale: 1, rotation: 0, duration: 0.3, ease: 'appleSpring', overwrite: 'auto' });
+        gsap.to(closeBtn, { scale: 1, rotation: 0, duration: 0.3, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
       });
     }
 
@@ -1383,8 +1709,8 @@
         gsap.to(uploadIcon, { rotation: 90, scale: 1.15, duration: 0.4, ease: 'back.out(2.2)', overwrite: 'auto' });
       });
       uploadBtn.addEventListener('pointerleave', () => {
-        gsap.to(uploadBtn, { y: 0, scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto' });
-        gsap.to(uploadIcon, { rotation: 0, scale: 1, duration: 0.32, ease: 'appleSpring', overwrite: 'auto' });
+        gsap.to(uploadBtn, { y: 0, scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
+        gsap.to(uploadIcon, { rotation: 0, scale: 1, duration: 0.32, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
       });
     }
 
@@ -1425,27 +1751,11 @@
     detailLenis = attachSmoothScroll(listWrap, listEl);
 
     searchInput.oninput = () => {
-      renderDetailRows(listEl, subjectName, sec, items, searchInput.value);
+      renderDetailRows(listEl, subjectName, sec, items, searchInput.value, false);
     };
 
     const targetRect = panel.getBoundingClientRect();
-    const h2Rect = h2.getBoundingClientRect();
-    const pDescRect = desc.getBoundingClientRect();
-    const targetTitlePx = parseFloat(getComputedStyle(h2).fontSize) || 28;
-    const targetDescPx = parseFloat(getComputedStyle(desc).fontSize) || 15;
-
-    panel._morphRest = {
-      targetRect,
-      targetTitlePx,
-      targetDescPx,
-      panelTitleLeft: h2Rect.left - targetRect.left,
-      panelTitleTop: h2Rect.top - targetRect.top,
-      panelDescLeft: pDescRect.left - targetRect.left,
-      panelDescTop: pDescRect.top - targetRect.top,
-      borderL: panel.clientLeft || 1.5,
-      borderT: panel.clientTop || 1.5,
-      borderR: panel.clientLeft || 1.5,
-    };
+    measurePanelMorphRest(panel, targetRect);
 
     if (activeSectionCardEl) activeSectionCardEl.style.visibility = 'hidden';
 
@@ -1456,18 +1766,16 @@
       }
       gsap.killTweensOf([overlayEl, panel, h2, desc, pills, closeBtn, extra, morphIcon, morphSide]);
       panel.classList.add('is-morphing');
+      setupDetailMorphChrome(panel, compact, targetRect);
       applyDetailMorphFrame(panel, compact, targetRect, 0);
 
       const morphState = { t: 0 };
       const tl = gsap.timeline({
-        onComplete: () => {
-          panel.classList.remove('is-morphing');
-          gsap.set(panel, { clearProps: 'left,top,width,height,padding,borderRadius,transform,opacity' });
-          gsap.set([h2, desc, pills, closeBtn, extra], { clearProps: 'fontSize,transform,opacity,visibility' });
-          gsap.set([morphIcon, morphSide], { clearProps: 'transform,opacity,left,right,top,width,height' });
-          detailTl = null;
-        },
+        onComplete: () => finishDetailOpenState(overlayEl),
+        onReverseComplete: () => finishDetailCloseState(overlayEl),
       });
+      tl._origin = 'open';
+      tl._cleanupFn = (isRev) => (isRev ? finishDetailCloseState(overlayEl) : finishDetailOpenState(overlayEl));
       detailTl = tl;
 
       tl.fromTo(
@@ -1503,18 +1811,17 @@
       return;
     }
 
-    clearTimeout(detailDescTimer);
     destroyDetailLenis();
     if (detailTl) {
       detailTl.kill();
-      detailTl = null;
-      panel.classList.remove('is-morphing');
-      gsap && gsap.set(panel, { clearProps: 'left,top,width,height,padding,borderRadius,opacity' });
+      finishDetailOpenState(overlayEl);
     }
     restoreActiveSectionCard();
 
     const anchorCard = $(`.lite-section-card[data-key="${sectionKey}"]`, $('#liteSubjectStage'));
     activeSectionCardEl = anchorCard;
+    detailSubject = subjectName;
+    detailSection = sectionKey;
     if (activeSectionCardEl) {
       resetCardTransforms(activeSectionCardEl);
       activeSectionCardEl.style.visibility = 'hidden';
@@ -1533,6 +1840,7 @@
     if (countPill) countPill.textContent = `${items.length} mục`;
     if (h2) h2.textContent = sec.title;
     if (desc) desc.textContent = sec.desc;
+    measurePanelMorphRest(panel);
 
     const morphIcon = $('.lite-morph-sec-icon', panel);
     const morphCount = $('.lite-morph-sec-side .lite-section-count', panel);
@@ -1542,7 +1850,7 @@
     if (searchInput) {
       searchInput.value = '';
       searchInput.placeholder = `Tìm nhanh trong ${sec.title.toLowerCase()}…`;
-      searchInput.oninput = () => renderDetailRows(listEl, subjectName, sec, items, searchInput.value);
+      searchInput.oninput = () => renderDetailRows(listEl, subjectName, sec, items, searchInput.value, false);
     }
 
     if (uploadBtn) {
@@ -1569,7 +1877,6 @@
     const overlayEl = $('#liteDetailOverlay');
     if (!overlayEl || !detailOpen) return;
 
-    clearTimeout(detailDescTimer);
     destroyDetailLenis();
 
     if (immediate || !gsap || isReduced() || !activeSectionCardEl) {
@@ -1577,25 +1884,25 @@
         detailTl.kill();
         detailTl = null;
       }
-      detailOpen = false;
-      detailClosing = false;
+      finishDetailCloseState(overlayEl);
+      return;
+    }
+
+    if (detailTl) {
+      if (detailClosing) return;
+      detailClosing = true;
       document.body.classList.remove('detail-open');
-      restoreActiveSectionCard();
-      overlayEl.hidden = true;
-      overlayEl.style.backgroundColor = '';
-      overlayEl.replaceChildren();
+      overlayEl.style.pointerEvents = 'none';
+      if (detailTl._origin === 'open') detailTl.reverse();
+      else detailTl.play();
       return;
     }
 
     if (detailClosing) return;
     detailClosing = true;
+    overlayEl.style.pointerEvents = 'none';
 
-    if (detailTl) {
-      detailTl.kill();
-      detailTl = null;
-    }
-
-    const sec = SUBJECT_SECTIONS.find((s) => s.key === state.section);
+    const sec = SUBJECT_SECTIONS.find((s) => s.key === (detailSection || state.section));
     const panel = $('.lite-detail-panel', overlayEl);
     const h2 = $('#liteDetailTitle', panel);
     const desc = $('.lite-panel-desc', panel);
@@ -1612,12 +1919,7 @@
     const startRect = panel.getBoundingClientRect();
     const compact = readSectionCardSpec(activeSectionCardEl);
     if (!compact) {
-      detailOpen = false;
-      detailClosing = false;
-      restoreActiveSectionCard();
-      overlayEl.hidden = true;
-      overlayEl.style.backgroundColor = '';
-      overlayEl.replaceChildren();
+      finishDetailCloseState(overlayEl);
       return;
     }
 
@@ -1626,26 +1928,12 @@
       desc.textContent = sec.desc;
     }
 
-    if (!panel._morphRest && h2 && desc) {
-      const h2Rect = h2.getBoundingClientRect();
-      const pDescRect = desc.getBoundingClientRect();
-      panel._morphRest = {
-        targetRect: startRect,
-        targetTitlePx: parseFloat(getComputedStyle(h2).fontSize) || 28,
-        targetDescPx: parseFloat(getComputedStyle(desc).fontSize) || 15,
-        panelTitleLeft: h2Rect.left - startRect.left,
-        panelTitleTop: h2Rect.top - startRect.top,
-        panelDescLeft: pDescRect.left - startRect.left,
-        panelDescTop: pDescRect.top - startRect.top,
-        borderL: panel.clientLeft || 1.5,
-        borderT: panel.clientTop || 1.5,
-        borderR: panel.clientLeft || 1.5,
-      };
-    }
+    measurePanelMorphRest(panel, startRect);
 
     gsap.killTweensOf([overlayEl, panel, h2, desc, top, pills, closeBtn, extra, morphIcon, morphSide]);
 
     panel.classList.add('is-morphing');
+    setupDetailMorphChrome(panel, compact, startRect);
     applyDetailMorphFrame(panel, compact, startRect, 1);
 
     // Giữ thẻ đích ẩn hoàn toàn suốt hành trình thu về (không hiện sớm hay mờ rồi đổi)
@@ -1653,16 +1941,11 @@
 
     const morphState = { t: 1 };
     const tl = gsap.timeline({
-      onComplete: () => {
-        detailTl = null;
-        detailOpen = false;
-        detailClosing = false;
-        restoreActiveSectionCard();
-        overlayEl.hidden = true;
-        overlayEl.style.backgroundColor = '';
-        overlayEl.replaceChildren();
-      },
+      onComplete: () => finishDetailCloseState(overlayEl),
+      onReverseComplete: () => finishDetailOpenState(overlayEl),
     });
+    tl._origin = 'close';
+    tl._cleanupFn = (isRev) => (isRev ? finishDetailOpenState(overlayEl) : finishDetailCloseState(overlayEl));
     detailTl = tl;
 
     tl.to(
@@ -1719,7 +2002,7 @@
   }
 
   function stepBack() {
-    if (state.subject && state.section) {
+    if (state.subject && state.section && !detailClosing) {
       navigate(state.subject, null);
     } else if (state.subject) {
       navigate(null, null);
@@ -1909,6 +2192,7 @@
     closeAccountMenu();
     closeGradePopover(true);
     closeDetailModal(true);
+    unlockScroll();
     const accountEl = $('#liteAccount');
     if (accountEl) accountEl.hidden = true;
 
@@ -1955,8 +2239,8 @@
         if (backIc) gsap.to(backIc, { x: -3.5, duration: 0.3, ease: 'appleBounce', overwrite: 'auto' });
       });
       backBtn.addEventListener('pointerleave', () => {
-        gsap.to(backBtn, { scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto' });
-        if (backIc) gsap.to(backIc, { x: 0, duration: 0.28, ease: 'appleSpring', overwrite: 'auto' });
+        gsap.to(backBtn, { scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
+        if (backIc) gsap.to(backIc, { x: 0, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
       });
     }
 
@@ -1966,7 +2250,7 @@
         gsap.to(gradeBtn, { scale: 1.04, duration: 0.3, ease: 'appleBounce', overwrite: 'auto' });
       });
       gradeBtn.addEventListener('pointerleave', () => {
-        gsap.to(gradeBtn, { scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto' });
+        gsap.to(gradeBtn, { scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
       });
     }
 
@@ -1976,7 +2260,7 @@
         gsap.to(avatar, { scale: 1.08, duration: 0.3, ease: 'appleBounce', overwrite: 'auto' });
       });
       avatar.addEventListener('pointerleave', () => {
-        gsap.to(avatar, { scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto' });
+        gsap.to(avatar, { scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
       });
     }
   }
@@ -2061,7 +2345,7 @@
 
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      if (detailOpen && state.subject) {
+      if (detailOpen && !detailClosing && state.subject) {
         navigate(state.subject, null);
       } else if (state.gradePopoverOpen) {
         closeGradePopover();
@@ -2073,6 +2357,25 @@
     });
 
     window.addEventListener('hashchange', () => syncRoute(true));
+
+    let resizeRaf = 0;
+    const onViewportResize = () => {
+      if (resizeRaf) return;
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = 0;
+        if (stageMorphTl) completeStageMorph();
+        if (detailTl) completeDetailMorph();
+        if (detailOpen && !detailClosing) {
+          const openPanel = $('#liteDetailOverlay .lite-detail-panel');
+          if (openPanel) measurePanelMorphRest(openPanel);
+        }
+        if (document.body.classList.contains('scroll-locked')) {
+          updateScrollLockVar();
+        }
+      });
+    };
+    window.addEventListener('resize', onViewportResize, { passive: true });
+    window.addEventListener('orientationchange', onViewportResize, { passive: true });
 
     // Mở khung đăng nhập ban đầu
     const loginEl = $('#liteLogin');

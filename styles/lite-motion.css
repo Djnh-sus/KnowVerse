@@ -20,10 +20,13 @@
 }
 
 .lite-subject-card,
-.lite-subject-hero,
-.lite-section-card,
-.lite-detail-panel {
+.lite-section-card {
   will-change: transform, opacity;
+}
+
+.lite-subject-hero.is-morphing *,
+.lite-detail-panel.is-morphing * {
+  transition: none !important;
 }
 
 .lite-brand-mark,

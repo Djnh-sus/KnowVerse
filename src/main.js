@@ -60,6 +60,7 @@ if (form) {
   let mode = 'signin';
   let pendingUser = null; // Người vừa đăng nhập Google lần đầu nhưng chưa có bản ghi trong profiles
   let manualSignOut = false;
+  let needPassword = false; // Google lần đầu: bắt buộc đặt mật khẩu cùng lúc chọn tên
 
   function setMode(nextMode) {
     mode = nextMode;
@@ -72,15 +73,23 @@ if (form) {
     toggleBtn.textContent = toggleText;
 
     const showCreds = nextMode !== 'profile';
-    emailEl.closest('label').hidden = passEl.closest('label').hidden = !showCreds;
-    emailEl.required = passEl.required = showCreds;
+    const askPw = nextMode === 'profile' && needPassword; // ô mật khẩu cho Google lần đầu
+    const newPw = nextMode === 'signup' || askPw;
+    emailEl.closest('label').hidden = !showCreds;
+    passEl.closest('label').hidden = !(showCreds || askPw);
+    emailEl.required = showCreds;
+    passEl.required = showCreds || askPw;
     nameLabel.hidden = nextMode === 'signin';
     nameEl.required = nextMode !== 'signin';
-    pass2Label.hidden = nextMode !== 'signup';
-    pass2El.required = nextMode === 'signup';
+    pass2Label.hidden = !newPw;
+    pass2El.required = newPw;
     if (googleBtn) googleBtn.hidden = !showCreds;
     if (orRow) orRow.hidden = !showCreds;
-    passEl.autocomplete = nextMode === 'signup' ? 'new-password' : 'current-password';
+    passEl.autocomplete = newPw ? 'new-password' : 'current-password';
+    if (askPw) {
+      if (titleEl) titleEl.textContent = 'Hoàn tất tài khoản';
+      if (mutedEl) mutedEl.textContent = 'Chọn tên hiển thị và đặt mật khẩu để lần sau đăng nhập được cả bằng email';
+    }
     say('');
   }
   setMode('signin');
@@ -116,6 +125,7 @@ if (form) {
     pass2El.value = '';
     setMode('signin');
     pendingUser = null;
+    needPassword = false;
 
     if (portal && typeof portal.loginFromAuth === 'function') {
       portal.loginFromAuth(authUser);
@@ -166,6 +176,7 @@ if (form) {
     // Đăng nhập Google lần đầu: hiện bước chọn tên hiển thị
     const meta = user.user_metadata || {};
     pendingUser = user;
+    needPassword = user.app_metadata?.provider === 'google';
     portal?.showLoginStep?.();
     nameEl.value = (meta.display_name || meta.full_name || meta.name || '').slice(0, 30);
     setMode('profile');
@@ -178,6 +189,14 @@ if (form) {
     const nm = nameEl.value.trim();
     say('');
 
+    if (mode === 'profile') {
+      if (nm.length < 2 || nm.length > 30) return say('Tên hiển thị dài 2-30 ký tự.', true);
+      if (needPassword) {
+        if (pw.length < 8) return say('Mật khẩu tối thiểu 8 ký tự.', true);
+        if (pw !== pass2El.value) return say('Hai mật khẩu chưa giống nhau.', true);
+      }
+    }
+
     if (mode === 'signup') {
       if (nm.length < 2 || nm.length > 30) return say('Tên hiển thị dài 2-30 ký tự.', true);
       if (pw.length < 8) return say('Mật khẩu tối thiểu 8 ký tự.', true);
@@ -188,11 +207,17 @@ if (form) {
     try {
       if (mode === 'profile') {
         if (!pendingUser) return setMode('signin');
+        if (needPassword) {
+          const { error: pwErr } = await sb.auth.updateUser({ password: pw });
+          // Bấm lại sau khi trùng tên: mật khẩu đã đặt rồi thì bỏ qua lỗi "trùng mật khẩu cũ"
+          if (pwErr && pwErr.code !== 'same_password' && !/different from the old/i.test(pwErr.message || '')) throw pwErr;
+        }
         return await createProfile(pendingUser, nm);
       }
       if (mode === 'signin') {
         const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
         if (error) throw error;
+        portal?.clearModeChosen?.(); // đăng nhập mới => hỏi lại giao diện
         return await afterAuth(data.user);
       }
       const { data, error } = await sb.auth.signUp({
@@ -204,6 +229,7 @@ if (form) {
       if (!data.session) {
         return say('Đã gửi email xác nhận, vui lòng mở hộp thư rồi đăng nhập.');
       }
+      portal?.clearModeChosen?.();
       await createProfile(data.user, nm);
     } catch (err) {
       say(viError(err?.message), true);
@@ -221,6 +247,7 @@ if (form) {
         manualSignOut = false;
       }
       pendingUser = null;
+      needPassword = false;
       return setMode('signin');
     }
     setMode(mode === 'signin' ? 'signup' : 'signin');
@@ -238,6 +265,7 @@ if (form) {
   // Cổng Auth cho portal.js (đăng xuất & tải danh sách đóng góp của bản thân khi cần)
   window.KV_AUTH = {
     async signOut() {
+      portal?.clearModeChosen?.();
       manualSignOut = true;
       try {
         await sb.auth.signOut();
@@ -260,6 +288,7 @@ if (form) {
   };
 
   sb.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') portal?.clearModeChosen?.();
     if (event === 'SIGNED_OUT' && !manualSignOut) {
       portal?.onRemoteSignOut?.();
     }
@@ -274,6 +303,7 @@ if (form) {
     try {
       const { data: { session } } = await sb.auth.getSession();
       if (hasOAuthCode) {
+        portal?.clearModeChosen?.(); // vừa quay về từ Google = đăng nhập mới
         window.history.replaceState({}, '', window.location.pathname + window.location.hash);
       }
       if (session?.user) {

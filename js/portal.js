@@ -13,6 +13,8 @@
   'use strict';
 
   const MODE_STORAGE_KEY = 'knowverse_device_ui_mode';
+  // Cờ "đã chọn giao diện cho lượt đăng nhập này" (lưu id user). Xóa khi đăng xuất / đăng nhập mới.
+  const MODE_CHOSEN_KEY = 'knowverse_mode_chosen_uid';
   const SWITCH_HANDOFF_KEY = 'knowverse_switch_handoff';
   const WINDOW_NAME_PREFIX = 'KV_SWITCH_HANDOFF:';
   const ALWAYS_ASK_MODE_ON_LOGIN = true;
@@ -50,7 +52,6 @@
       'js/app.js',
     ],
     lite: [
-      'vendor/Flip.min.js',
       'js/lite/lite-icons.js',
       'js/lite/lite-theme.js',
       'js/lite/lite-app.js',
@@ -102,6 +103,34 @@
     }
     if (typeof portal.onModeSaved === 'function') {
       portal.onModeSaved(mode, state.user);
+    }
+  }
+
+  function isModeChosenFor(user) {
+    if (!user || !user.id) return false;
+    try {
+      return window.localStorage.getItem(MODE_CHOSEN_KEY) === user.id;
+    } catch {
+      return memoryStore[MODE_CHOSEN_KEY] === user.id;
+    }
+  }
+
+  function markModeChosen(user) {
+    if (!user || !user.id) return;
+    memoryStore[MODE_CHOSEN_KEY] = user.id;
+    try {
+      window.localStorage.setItem(MODE_CHOSEN_KEY, user.id);
+    } catch {
+      // Bỏ qua
+    }
+  }
+
+  function clearModeChosen() {
+    delete memoryStore[MODE_CHOSEN_KEY];
+    try {
+      window.localStorage.removeItem(MODE_CHOSEN_KEY);
+    } catch {
+      // Bỏ qua
     }
   }
 
@@ -874,6 +903,7 @@
         const chosen = btn.dataset.mode;
         if (!isValidMode(chosen)) return;
         saveMode(chosen);
+        markModeChosen(state.user);
         overlay.querySelectorAll('.kv-mode-card[data-mode]').forEach((b) => {
           b.disabled = true;
         });
@@ -995,7 +1025,8 @@
         loginEl.style.transform = '';
       }
       const savedMode = getSavedMode();
-      if (!ALWAYS_ASK_MODE_ON_LOGIN && savedMode) {
+      // Hỏi giao diện 1 lần sau mỗi lượt đăng nhập; tải lại / vào lại web khi còn phiên thì vào thẳng giao diện đã lưu
+      if (savedMode && (!ALWAYS_ASK_MODE_ON_LOGIN || isModeChosenFor(user))) {
         bootMode(savedMode, user, { showToast: true, reason: 'auto' });
       } else {
         showModePicker(user);
@@ -1051,6 +1082,7 @@
   function switchMode(newMode) {
     if (!isValidMode(newMode) || !state.user) return;
     saveMode(newMode);
+    markModeChosen(state.user);
     if (state.bootedMode === newMode) {
       toast(`Đang sử dụng ${MODE_LABELS[newMode]}`);
       return;
@@ -1134,6 +1166,7 @@
     showLoginStep,
     loginFromAuth,
     onRemoteSignOut,
+    clearModeChosen,
     openAccountModal,
     openSettingsModal,
     openModeSwitchModal,

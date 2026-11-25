@@ -51,6 +51,10 @@ body.lite .lite-header {
   padding-right: max(78px, calc(var(--safe-right, 16px) + 56px));
 }
 
+body.lite.scroll-locked #top {
+  right: var(--sbw, 0px);
+}
+
 /* Ghi đè height: 100% và margin form của base.css để Giao diện Nhẹ cuộn mượt và ô tìm kiếm không lệch */
 html.lite-root,
 body.lite {
