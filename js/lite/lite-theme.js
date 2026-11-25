@@ -12,7 +12,7 @@
 
   const PALETTES = {
     home: {
-      bg: ['#05070f', '#090d1c', '#0e1428'],
+      bg: ['#03040a', '#060812', '#090d19'],
       support: '#1d5be0',
       accent: '#dfe5eb',
       spark: '#d4ff24',
@@ -20,14 +20,14 @@
       deco: ['star', 'planet', 'integral', 'orbit', 'atom', 'comet', 'star', 'benzene', 'constellation', 'dna', 'planet', 'code', 'star', 'orbit'],
     },
     'Toán': {
-      bg: ['#050a16', '#0a1830', '#0f274a'],
+      bg: ['#03060e', '#06101f', '#0a182d'],
       support: '#0284c7',
       spark: '#38bdf8',
       soft: '#a8c5e2',
       deco: ['integral', 'triangle', 'pi', 'parabola', 'sigma', 'compass', 'infinity', 'sqrt', 'axes', 'pi', 'integral', 'triangle', 'sigma', 'parabola'],
     },
     'Lý': {
-      bg: ['#080614', '#140e2e', '#211547'],
+      bg: ['#05040d', '#0c081c', '#130d2a'],
       support: '#7c3aed',
       spark: '#c084fc',
       soft: '#c4b2e4',
@@ -35,21 +35,21 @@
     },
     'Hóa': {
       // Nền Đen Chàm Lạnh kết hợp ánh Vàng Cam Hổ Phách -> không bao giờ bị xỉn màu nâu đất
-      bg: ['#080912', '#11121f', '#1a1726'],
+      bg: ['#05060c', '#0a0b15', '#100f1b'],
       support: '#f59e0b',
       spark: '#fbbf24',
       soft: '#d8c9ae',
       deco: ['benzene', 'flask', 'tile', 'molecule', 'water', 'tube', 'bubbles', 'benzene', 'flask', 'molecule', 'tile', 'tube', 'water', 'bubbles'],
     },
     'Sinh': {
-      bg: ['#040f0c', '#09221b', '#0d3328'],
+      bg: ['#030907', '#061511', '#091f19'],
       support: '#10b981',
       spark: '#34d399',
       soft: '#a6d6c2',
       deco: ['dna', 'leaf', 'cell', 'microscope', 'chromosome', 'pulse', 'leaf', 'dna', 'cell', 'chromosome', 'microscope', 'leaf', 'pulse', 'cell'],
     },
     'Tin': {
-      bg: ['#0c0610', '#1f0c20', '#30112e'],
+      bg: ['#07040a', '#120715', '#1b0b1e'],
       support: '#db2777',
       spark: '#f472b6',
       soft: '#dfb2c8',
@@ -58,7 +58,7 @@
   };
 
   const FALLBACK = {
-    bg: ['#05070f', '#0b1022', '#111936'],
+    bg: ['#03040a', '#070a14', '#0a0f1f'],
     support: '#3b4a8c',
     spark: '#7dd3fc',
     soft: '#9aa6ba',
@@ -162,8 +162,8 @@
     const layers = [
       `${url(buildMark(theme))} right -12vmin bottom -10vmin / min(80vmin, 640px) no-repeat`,
       `${url(buildPattern(theme))} 0 0 / ${TILE}px ${TILE}px repeat`,
-      `radial-gradient(68% 54% at 88% 4%, rgba(${rgb(theme.support)}, .26), transparent 72%)`,
-      `radial-gradient(58% 48% at 6% 96%, rgba(${rgb(theme.accent)}, .12), transparent 72%)`,
+      `radial-gradient(54% 42% at 88% 4%, rgba(${rgb(theme.support)}, .09), transparent 68%)`,
+      `radial-gradient(48% 40% at 6% 96%, rgba(${rgb(theme.accent)}, .035), transparent 66%)`,
       `linear-gradient(160deg, ${c0} 0%, ${c1} 54%, ${c2} 100%)`,
     ];
     theme.background = layers.join(', ');
