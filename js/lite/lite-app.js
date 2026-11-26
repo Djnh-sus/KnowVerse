@@ -42,7 +42,7 @@
   }
 
   function attachSmoothScroll(wrapperEl, contentEl) {
-    if (!Lenis || !wrapperEl || reducedMotion.matches) return null;
+    if (!Lenis || !wrapperEl || isReduced()) return null;
     try {
       const instance = new Lenis({
         wrapper: wrapperEl,
@@ -85,10 +85,63 @@
   let detailSubject = null;
   let detailSection = null;
   let activeSectionCardEl = null;
+  let introPrepared = false;
+
+  // ---------- 3 chế độ Chuyển động & Hiệu ứng: 'full' (Đầy đủ) | 'reduced' (Giảm) | 'fast' (Nhanh - cắt 0ms) ----------
+  const MOTION_KEY = 'knowverse_lite_motion';
+  const FADE_IN_S = 0.24;
+  const FADE_OUT_S = 0.2;
+  let motionPref = reducedMotion.matches ? 'reduced' : 'full';
+  try {
+    const saved = global.localStorage.getItem(MOTION_KEY);
+    if (saved === 'full' || saved === 'reduced' || saved === 'fast') {
+      motionPref = saved;
+    }
+  } catch (_) {
+    /* trình duyệt chặn localStorage: dùng mặc định */
+  }
 
   function isReduced() {
-    return reducedMotion.matches;
+    return motionPref !== 'full';
   }
+
+  /** Chế độ Giảm: giữ chuyển cảnh mờ nhanh (fade) thay cho morph nặng. Chế độ Nhanh ('fast') trả về false để cắt 0ms. */
+  function useFade() {
+    return !!gsap && motionPref === 'reduced';
+  }
+
+  function applyMotionAttr() {
+    if (document.body.classList.contains('lite') || document.documentElement.classList.contains('lite-root')) {
+      document.documentElement.dataset.motion = motionPref;
+    }
+  }
+
+  function getMotionPref() {
+    return motionPref;
+  }
+
+  function setMotionPref(value) {
+    if (value !== 'full' && value !== 'reduced' && value !== 'fast') return;
+    motionPref = value;
+    try {
+      global.localStorage.setItem(MOTION_KEY, value);
+    } catch (_) {
+      /* không lưu được thì áp dụng trong phiên */
+    }
+    applyMotionAttr();
+    if (value !== 'full') {
+      destroyDetailLenis();
+      clearAllHomeVisibility(true);
+    }
+  }
+
+  function fadeInEl(el) {
+    if (!el || !gsap) return;
+    gsap.killTweensOf(el);
+    gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: FADE_IN_S, ease: 'power1.out', clearProps: 'opacity' });
+  }
+
+  applyMotionAttr();
 
   /** Bật/tắt khóa con trỏ trên toàn vùng chuyển cảnh để thẻ đang bay không bị dính pointerleave/hover. */
   function setStageMorphing(active) {
@@ -176,7 +229,7 @@
       }
 
       const rippleTarget = e.target.closest('.lite-ripple, .lite-subject-card, .lite-section-card');
-      if (rippleTarget) {
+      if (rippleTarget && !isReduced()) {
         const rect = rippleTarget.getBoundingClientRect();
         const size = Math.max(rect.width, rect.height) * 0.85;
         const wave = document.createElement('span');
@@ -210,6 +263,13 @@
         { y: -16, autoAlpha: 0, scale: 0.88 },
         { y: 0, autoAlpha: 1, scale: 1, duration: 0.38, ease: 'appleBounce', overwrite: 'auto' }
       );
+    } else if (useFade()) {
+      gsap.killTweensOf(el);
+      gsap.set(el, { clearProps: 'transform,visibility' });
+      gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: 'power2.out', clearProps: 'opacity' });
+    } else if (gsap) {
+      gsap.killTweensOf(el);
+      gsap.set(el, { clearProps: 'transform,opacity,visibility' });
     }
 
     toastTimer = setTimeout(() => {
@@ -223,6 +283,17 @@
           overwrite: 'auto',
           onComplete: () => {
             el.hidden = true;
+            gsap.set(el, { clearProps: 'transform,opacity,visibility' });
+          },
+        });
+      } else if (useFade()) {
+        gsap.to(el, {
+          opacity: 0,
+          duration: 0.18,
+          ease: 'power1.in',
+          onComplete: () => {
+            el.hidden = true;
+            gsap.set(el, { clearProps: 'opacity' });
           },
         });
       } else {
@@ -317,6 +388,11 @@
         { autoAlpha: 0, x: -10, scale: 0.9 },
         { autoAlpha: 1, x: 0, scale: 1, duration: 0.4, stagger: 0.04, ease: 'back.out(1.9)', overwrite: 'auto' }
       );
+    } else if (gsap) {
+      const items = $$('.lite-grade-option', pop);
+      gsap.killTweensOf([pop, ...items]);
+      gsap.set([pop, ...items], { clearProps: 'transform,opacity,visibility' });
+      if (useFade()) fadeInEl(pop);
     }
   }
 
@@ -338,6 +414,17 @@
         ease: 'appleSpring',
         overwrite: 'auto',
         onComplete: () => {
+          if (!state.gradePopoverOpen) pop.hidden = true;
+        },
+      });
+    } else if (!immediate && useFade()) {
+      gsap.killTweensOf(pop);
+      gsap.to(pop, {
+        opacity: 0,
+        duration: 0.16,
+        ease: 'power1.in',
+        onComplete: () => {
+          gsap.set(pop, { clearProps: 'opacity' });
           if (!state.gradePopoverOpen) pop.hidden = true;
         },
       });
@@ -415,15 +502,19 @@
 
       card.append(deco, iconBox, h2, arrow);
 
-      if (gsap && !isReduced() && global.matchMedia('(hover: hover)').matches) {
+      if (gsap && global.matchMedia('(hover: hover)').matches) {
         card.addEventListener('pointerenter', () => {
-          if (stageMorphTl || card.style.visibility === 'hidden') return;
+          if (isReduced() || stageMorphTl || card.style.visibility === 'hidden') return;
           gsap.to(card, { y: -5, scale: 1.022, duration: 0.34, ease: 'appleSpring', overwrite: 'auto' });
           gsap.to(iconBox, { y: -3, scale: 1.12, duration: 0.38, ease: 'back.out(2.0)', overwrite: 'auto' });
           gsap.to(arrow, { x: 3, scale: 1.08, duration: 0.34, ease: 'back.out(2.0)', overwrite: 'auto' });
         });
         card.addEventListener('pointerleave', () => {
           if (stageMorphTl || card.style.visibility === 'hidden') return;
+          if (isReduced()) {
+            resetCardTransforms(card);
+            return;
+          }
           gsap.to(card, { y: 0, scale: 1, duration: 0.3, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
           gsap.to(iconBox, { y: 0, scale: 1, duration: 0.3, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
           gsap.to(arrow, { x: 0, scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
@@ -497,14 +588,18 @@
     hero.append(heroDeco, emblem, h1, heroArrow);
     heroSlot.appendChild(hero);
 
-    if (gsap && !isReduced() && global.matchMedia('(hover: hover)').matches) {
+    if (gsap && global.matchMedia('(hover: hover)').matches) {
       hero.addEventListener('pointerenter', () => {
-        if (hero.classList.contains('is-morphing')) return;
+        if (isReduced() || hero.classList.contains('is-morphing')) return;
         gsap.to(core, { y: -3, scale: 1.1, duration: 0.42, ease: 'back.out(2.1)', overwrite: 'auto' });
         gsap.to(ringInner, { rotation: 30, scale: 1.04, duration: 0.5, ease: 'appleBounce', overwrite: 'auto' });
         gsap.to(ringOuter, { rotation: -20, scale: 1.03, duration: 0.5, ease: 'appleBounce', overwrite: 'auto' });
       });
       hero.addEventListener('pointerleave', () => {
+        if (isReduced()) {
+          gsap.set([core, ringInner, ringOuter], { clearProps: 'transform' });
+          return;
+        }
         gsap.to(core, { y: 0, scale: 1, duration: 0.34, ease: 'appleSpring', overwrite: 'auto' });
         gsap.to(ringInner, { rotation: 0, scale: 1, duration: 0.38, ease: 'appleSpring', overwrite: 'auto' });
         gsap.to(ringOuter, { rotation: 0, scale: 1, duration: 0.38, ease: 'appleSpring', overwrite: 'auto' });
@@ -565,15 +660,19 @@
 
       card.append(secDeco, main, side);
 
-      if (gsap && !isReduced() && global.matchMedia('(hover: hover)').matches) {
+      if (gsap && global.matchMedia('(hover: hover)').matches) {
         card.addEventListener('pointerenter', () => {
-          if (stageMorphTl || detailOpen || detailClosing || card.style.visibility === 'hidden') return;
+          if (isReduced() || stageMorphTl || detailOpen || detailClosing || card.style.visibility === 'hidden') return;
           gsap.to(card, { y: -3, x: 4, scale: 1.012, duration: 0.34, ease: 'appleSpring', overwrite: 'auto' });
           gsap.to(iconWrap, { scale: 1.14, rotation: -7, duration: 0.38, ease: 'back.out(2.1)', overwrite: 'auto' });
           gsap.to(arrow, { x: 4, scale: 1.1, duration: 0.34, ease: 'back.out(2.0)', overwrite: 'auto' });
         });
         card.addEventListener('pointerleave', () => {
           if (stageMorphTl || detailOpen || detailClosing || card.style.visibility === 'hidden') return;
+          if (isReduced()) {
+            resetCardTransforms(card);
+            return;
+          }
           gsap.to(card, { y: 0, x: 0, scale: 1, duration: 0.3, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
           gsap.to(iconWrap, { scale: 1, rotation: 0, duration: 0.3, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
           gsap.to(arrow, { x: 0, scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
@@ -866,11 +965,13 @@
     if (homeStage) {
       const allHomeEls = [$('.lite-home-banner', homeStage), ...$$('.lite-subject-card', homeStage)].filter(Boolean);
       if (gsap && allHomeEls.length) gsap.set(allHomeEls, { clearProps: 'transform,opacity,visibility' });
+      if (gsap) gsap.set(homeStage, { clearProps: 'opacity' });
       homeStage.classList.remove('lite-stage-outgoing');
     }
     if (subjectWrap) {
       const secCardsNow = $$('.lite-section-card', subjectWrap);
       if (gsap && secCardsNow.length) gsap.set(secCardsNow, { clearProps: 'transform,opacity,visibility' });
+      if (gsap) gsap.set(subjectWrap, { clearProps: 'opacity' });
       subjectWrap.classList.remove('lite-stage-outgoing');
     }
 
@@ -936,6 +1037,24 @@
     populateSubjectStage(subjectName);
 
     if (!animate || !gsap || isReduced() || !clickedCard || !startCardRect || startCardRect.width < 10) {
+      if (animate && useFade() && startHomeRect && startHomeRect.width > 10) {
+        homeStage.classList.add('lite-stage-outgoing');
+        lockOutgoingWrap(homeStage, startHomeRect);
+        unlockOutgoingWrap(subjectWrap);
+        subjectWrap.classList.remove('lite-stage-outgoing');
+        subjectWrap.hidden = false;
+        setStageMorphing(true);
+        const ctx = { subjectScrollY: 0 };
+        const tl = gsap.timeline({
+          onComplete: () => finishStage('subject', null, ctx),
+        });
+        tl._origin = 'open';
+        tl._cleanupFn = () => finishStage('subject', null, ctx);
+        stageMorphTl = tl;
+        tl.fromTo(homeStage, { opacity: 1 }, { opacity: 0, duration: 0.18, ease: 'power1.out' }, 0);
+        tl.fromTo(subjectWrap, { opacity: 0 }, { opacity: 1, duration: 0.26, ease: 'power2.out' }, 0.06);
+        return;
+      }
       unlockOutgoingWrap(homeStage);
       unlockOutgoingWrap(subjectWrap);
       clearAllHomeVisibility(true);
@@ -945,6 +1064,7 @@
       subjectWrap.hidden = false;
       stageDir = null;
       stageSubject = null;
+      if (animate && useFade()) fadeInEl(subjectWrap);
       return;
     }
 
@@ -1071,6 +1191,28 @@
         gsap && gsap.set(hero, { clearProps: 'left,top,width,height,transform,opacity' });
       }
       if (heroSlot) heroSlot.style.height = '';
+      if (animate && useFade() && startWrapRect && startWrapRect.width > 10) {
+        subjectWrap.classList.add('lite-stage-outgoing');
+        lockOutgoingWrap(subjectWrap, startWrapRect);
+        unlockOutgoingWrap(homeStage);
+        homeStage.classList.remove('lite-stage-outgoing');
+        homeStage.hidden = false;
+        global.scrollTo({ top: homeScrollY, left: 0, behavior: 'instant' });
+        clearAllHomeVisibility(true);
+        const allHomeEls = [$('.lite-home-banner', homeStage), ...$$('.lite-subject-card', homeStage)].filter(Boolean);
+        if (allHomeEls.length) gsap.set(allHomeEls, { clearProps: 'transform,opacity,visibility' });
+        setStageMorphing(true);
+        const ctx = { subjectScrollY };
+        const tl = gsap.timeline({
+          onComplete: () => finishStage('home', null, ctx),
+        });
+        tl._origin = 'close';
+        tl._cleanupFn = () => finishStage('home', null, ctx);
+        stageMorphTl = tl;
+        tl.fromTo(subjectWrap, { opacity: 1 }, { opacity: 0, duration: 0.18, ease: 'power1.out' }, 0);
+        tl.fromTo(homeStage, { opacity: 0 }, { opacity: 1, duration: 0.26, ease: 'power2.out' }, 0.06);
+        return;
+      }
       unlockOutgoingWrap(subjectWrap);
       unlockOutgoingWrap(homeStage);
       subjectWrap.hidden = true;
@@ -1083,6 +1225,7 @@
       if (gsap && allHomeEls.length) gsap.set(allHomeEls, { clearProps: 'transform,opacity,visibility' });
       stageDir = null;
       stageSubject = null;
+      if (animate && useFade()) fadeInEl(homeStage);
       return;
     }
 
@@ -1491,13 +1634,18 @@
         toast(`${subjectName} · ${item.title} (nối nội dung thật ở bước sau)`);
       });
 
-      if (gsap && !isReduced() && global.matchMedia('(hover: hover)').matches) {
+      if (gsap && global.matchMedia('(hover: hover)').matches) {
         row.addEventListener('pointerenter', () => {
+          if (isReduced()) return;
           gsap.to(row, { x: 5, duration: 0.3, ease: 'appleBounce', overwrite: 'auto' });
           gsap.to(idxBadge, { scale: 1.1, rotation: -5, duration: 0.36, ease: 'back.out(2.2)', overwrite: 'auto' });
           gsap.to(go, { x: 3, duration: 0.3, ease: 'appleBounce', overwrite: 'auto' });
         });
         row.addEventListener('pointerleave', () => {
+          if (isReduced()) {
+            gsap.set([row, idxBadge, go], { clearProps: 'transform' });
+            return;
+          }
           gsap.to(row, { x: 0, scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
           gsap.to(idxBadge, { scale: 1, rotation: 0, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
           gsap.to(go, { x: 0, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
@@ -1538,6 +1686,32 @@
     detailTl = null;
   }
 
+  function getSubjectBackgroundPeers(excludeKey) {
+    const subjectWrap = $('#liteSubjectStage');
+    if (!subjectWrap) return [];
+    const hero = $('.lite-subject-hero', subjectWrap);
+    const otherCards = $$('.lite-section-card', subjectWrap).filter((c) => c.dataset.key !== excludeKey);
+    return [hero, ...otherCards].filter(Boolean);
+  }
+
+  function resetSubjectStageItems() {
+    const subjectWrap = $('#liteSubjectStage');
+    if (!subjectWrap) return;
+    const hero = $('.lite-subject-hero', subjectWrap);
+    const cards = $$('.lite-section-card', subjectWrap);
+    const all = [subjectWrap, hero, ...cards].filter(Boolean);
+    if (gsap) {
+      gsap.killTweensOf(all);
+      gsap.set(all, { clearProps: 'transform,opacity,visibility' });
+    } else {
+      all.forEach((el) => {
+        el.style.visibility = '';
+        el.style.opacity = '';
+        el.style.transform = '';
+      });
+    }
+  }
+
   function finishDetailCloseState(overlayEl) {
     detailTl = null;
     detailOpen = false;
@@ -1546,7 +1720,12 @@
     detailSection = null;
     document.body.classList.remove('detail-open');
     restoreActiveSectionCard();
+    resetSubjectStageItems();
     if (overlayEl) {
+      if (gsap) {
+        gsap.killTweensOf(overlayEl);
+        gsap.set(overlayEl, { clearProps: 'opacity' });
+      }
       overlayEl.hidden = true;
       overlayEl.style.backgroundColor = '';
       overlayEl.style.pointerEvents = '';
@@ -1591,6 +1770,10 @@
     if (detailTl) {
       detailTl.kill();
       detailTl = null;
+    }
+    if (gsap) {
+      gsap.killTweensOf(overlayEl);
+      gsap.set(overlayEl, { clearProps: 'opacity' });
     }
     restoreActiveSectionCard();
 
@@ -1654,11 +1837,16 @@
     closeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>';
     closeBtn.addEventListener('click', () => navigate(subjectName, null));
 
-    if (gsap && !isReduced() && global.matchMedia('(hover: hover)').matches) {
+    if (gsap && global.matchMedia('(hover: hover)').matches) {
       closeBtn.addEventListener('pointerenter', () => {
+        if (isReduced()) return;
         gsap.to(closeBtn, { scale: 1.16, rotation: 90, duration: 0.34, ease: 'back.out(2.2)', overwrite: 'auto' });
       });
       closeBtn.addEventListener('pointerleave', () => {
+        if (isReduced()) {
+          gsap.set(closeBtn, { clearProps: 'transform' });
+          return;
+        }
         gsap.to(closeBtn, { scale: 1, rotation: 0, duration: 0.3, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
       });
     }
@@ -1703,12 +1891,17 @@
       toast(`Đăng tải vào "${sec.title}" môn ${subjectName} (làm ở bước nối Supabase)`);
     };
 
-    if (gsap && !isReduced() && global.matchMedia('(hover: hover)').matches) {
+    if (gsap && global.matchMedia('(hover: hover)').matches) {
       uploadBtn.addEventListener('pointerenter', () => {
+        if (isReduced()) return;
         gsap.to(uploadBtn, { y: -2, scale: 1.03, duration: 0.32, ease: 'appleBounce', overwrite: 'auto' });
         gsap.to(uploadIcon, { rotation: 90, scale: 1.15, duration: 0.4, ease: 'back.out(2.2)', overwrite: 'auto' });
       });
       uploadBtn.addEventListener('pointerleave', () => {
+        if (isReduced()) {
+          gsap.set([uploadBtn, uploadIcon], { clearProps: 'transform' });
+          return;
+        }
         gsap.to(uploadBtn, { y: 0, scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
         gsap.to(uploadIcon, { rotation: 0, scale: 1, duration: 0.32, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
       });
@@ -1757,14 +1950,19 @@
     const targetRect = panel.getBoundingClientRect();
     measurePanelMorphRest(panel, targetRect);
 
-    if (activeSectionCardEl) activeSectionCardEl.style.visibility = 'hidden';
+    const subjectWrap = $('#liteSubjectStage');
+    const bgPeers = getSubjectBackgroundPeers(sectionKey);
 
     if (animate && gsap && !isReduced() && compact) {
       if (detailTl) {
         detailTl.kill();
         detailTl = null;
       }
-      gsap.killTweensOf([overlayEl, panel, h2, desc, pills, closeBtn, extra, morphIcon, morphSide]);
+      gsap.killTweensOf([overlayEl, panel, h2, desc, pills, closeBtn, extra, morphIcon, morphSide, ...bgPeers]);
+      gsap.set(bgPeers, { clearProps: 'transform,opacity,visibility' });
+      const peerRects = bgPeers.map((el) => el.getBoundingClientRect());
+      if (activeSectionCardEl) activeSectionCardEl.style.visibility = 'hidden';
+
       panel.classList.add('is-morphing');
       setupDetailMorphChrome(panel, compact, targetRect);
       applyDetailMorphFrame(panel, compact, targetRect, 0);
@@ -1795,6 +1993,41 @@
         },
         0
       );
+
+      // Thu gọn Khung Môn lớn & 2 mục còn lại về hướng tâm bảng chi tiết và ẩn hẳn phía sau
+      if (bgPeers.length) {
+        const cx = targetRect.left + targetRect.width * 0.5;
+        const cy = targetRect.top + targetRect.height * 0.5;
+        bgPeers.forEach((el, i) => {
+          const r = peerRects[i];
+          const dx = (cx - (r.left + r.width * 0.5)) * 0.34;
+          const dy = (cy - (r.top + r.height * 0.5)) * 0.34;
+          tl.fromTo(
+            el,
+            { x: 0, y: 0, scale: 1, autoAlpha: 1 },
+            { x: dx, y: dy, scale: 0.82, autoAlpha: 0, duration: 0.3, ease: 'power2.out' },
+            i * 0.018
+          );
+        });
+      }
+    } else if (animate && useFade()) {
+      // Mức Giảm: ẩn mượt khung môn & 3 mục phía sau bằng Fade đồng bộ với bảng chi tiết
+      if (subjectWrap) {
+        gsap.killTweensOf(subjectWrap);
+        gsap.to(subjectWrap, { opacity: 0, duration: 0.2, ease: 'power2.out' });
+      }
+      gsap.killTweensOf(overlayEl);
+      gsap.fromTo(overlayEl, { opacity: 0 }, { opacity: 1, duration: FADE_IN_S, ease: 'power2.out', clearProps: 'opacity' });
+    } else {
+      // Mức Nhanh hoặc mở không hiệu ứng: ẩn gọn nền sau tức thì 0ms
+      if (!isReduced()) {
+        if (activeSectionCardEl) activeSectionCardEl.style.visibility = 'hidden';
+        bgPeers.forEach((el) => {
+          el.style.visibility = 'hidden';
+        });
+      } else if (subjectWrap) {
+        subjectWrap.style.visibility = 'hidden';
+      }
     }
 
     closeBtn.focus({ preventScroll: true });
@@ -1822,9 +2055,14 @@
     activeSectionCardEl = anchorCard;
     detailSubject = subjectName;
     detailSection = sectionKey;
-    if (activeSectionCardEl) {
-      resetCardTransforms(activeSectionCardEl);
-      activeSectionCardEl.style.visibility = 'hidden';
+    if (!isReduced()) {
+      if (activeSectionCardEl) {
+        resetCardTransforms(activeSectionCardEl);
+        activeSectionCardEl.style.visibility = 'hidden';
+      }
+      getSubjectBackgroundPeers(sectionKey).forEach((el) => {
+        el.style.visibility = 'hidden';
+      });
     }
 
     const items = getSectionItems(subjectName, sectionKey);
@@ -1870,6 +2108,8 @@
         { autoAlpha: 0, y: 8 },
         { autoAlpha: 1, y: 0, duration: 0.28, ease: 'appleSpring', clearProps: 'transform,opacity,visibility' }
       );
+    } else if (useFade() && extra) {
+      fadeInEl(extra);
     }
   }
 
@@ -1883,6 +2123,28 @@
       if (detailTl) {
         detailTl.kill();
         detailTl = null;
+      }
+      if (!immediate && useFade()) {
+        if (detailClosing) return;
+        detailClosing = true;
+        overlayEl.style.pointerEvents = 'none';
+        document.body.classList.remove('detail-open');
+        const subjectWrap = $('#liteSubjectStage');
+        if (subjectWrap) {
+          subjectWrap.style.visibility = '';
+          gsap.killTweensOf(subjectWrap);
+          gsap.fromTo(subjectWrap, { opacity: 0 }, { opacity: 1, duration: 0.24, ease: 'power2.out', clearProps: 'opacity' });
+        }
+        gsap.killTweensOf(overlayEl);
+        gsap.to(overlayEl, {
+          opacity: 0,
+          duration: FADE_OUT_S,
+          ease: 'power2.in',
+          onComplete: () => {
+            finishDetailCloseState(overlayEl);
+          },
+        });
+        return;
       }
       finishDetailCloseState(overlayEl);
       return;
@@ -1902,7 +2164,8 @@
     detailClosing = true;
     overlayEl.style.pointerEvents = 'none';
 
-    const sec = SUBJECT_SECTIONS.find((s) => s.key === (detailSection || state.section));
+    const secKey = detailSection || state.section;
+    const sec = SUBJECT_SECTIONS.find((s) => s.key === secKey);
     const panel = $('.lite-detail-panel', overlayEl);
     const h2 = $('#liteDetailTitle', panel);
     const desc = $('.lite-panel-desc', panel);
@@ -1915,6 +2178,14 @@
 
     document.body.classList.remove('detail-open');
     resetCardTransforms(activeSectionCardEl);
+
+    // Đo vị trí nghỉ của Khung Môn lớn & 2 thẻ còn lại để bung ngược từ tâm ra khớp vị trí cũ
+    const bgPeers = getSubjectBackgroundPeers(secKey);
+    if (bgPeers.length) {
+      gsap.killTweensOf(bgPeers);
+      gsap.set(bgPeers, { clearProps: 'transform,opacity,visibility' });
+    }
+    const peerRects = bgPeers.map((el) => el.getBoundingClientRect());
 
     const startRect = panel.getBoundingClientRect();
     const compact = readSectionCardSpec(activeSectionCardEl);
@@ -1968,6 +2239,22 @@
       },
       0
     );
+
+    if (bgPeers.length) {
+      const cx = startRect.left + startRect.width * 0.5;
+      const cy = startRect.top + startRect.height * 0.5;
+      bgPeers.forEach((el, i) => {
+        const r = peerRects[i];
+        const dx = (cx - (r.left + r.width * 0.5)) * 0.34;
+        const dy = (cy - (r.top + r.height * 0.5)) * 0.34;
+        tl.fromTo(
+          el,
+          { x: dx, y: dy, scale: 0.82, autoAlpha: 0 },
+          { x: 0, y: 0, scale: 1, autoAlpha: 1, duration: 0.34, ease: STAGE_EASE },
+          0.02 + i * 0.018
+        );
+      });
+    }
   }
 
   // ---------- Router Hash & Điều hướng ----------
@@ -2013,6 +2300,7 @@
     const backBtn = $('#liteBack');
     if (!backBtn) return;
     if (show && backBtn.hidden) {
+      if (gsap) gsap.killTweensOf(backBtn);
       backBtn.hidden = false;
       if (gsap && !isReduced()) {
         gsap.fromTo(
@@ -2020,9 +2308,27 @@
           { x: -12, scale: 0.82, autoAlpha: 0 },
           { x: 0, scale: 1, autoAlpha: 1, duration: 0.38, ease: 'back.out(1.9)', clearProps: 'transform,opacity,visibility' }
         );
+      } else if (useFade()) {
+        gsap.set(backBtn, { clearProps: 'transform,visibility' });
+        gsap.fromTo(backBtn, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: 'power2.out', clearProps: 'opacity' });
+      } else if (gsap) {
+        gsap.set(backBtn, { clearProps: 'transform,opacity,visibility' });
       }
     } else if (!show && !backBtn.hidden) {
-      backBtn.hidden = true;
+      if (gsap) gsap.killTweensOf(backBtn);
+      if (useFade()) {
+        gsap.to(backBtn, {
+          opacity: 0,
+          duration: 0.14,
+          ease: 'power1.in',
+          onComplete: () => {
+            if (!state.subject) backBtn.hidden = true;
+            gsap.set(backBtn, { clearProps: 'opacity' });
+          },
+        });
+      } else {
+        backBtn.hidden = true;
+      }
     }
   }
 
@@ -2123,11 +2429,61 @@
     }
   }
 
-  function playHomeIntroBounce() {
-    if (!gsap || isReduced() || state.subject) return;
+  function prepareHomeIntro() {
     const homeStage = $('#liteHomeStage');
     const banner = $('.lite-home-banner', homeStage);
     const cards = $$('.lite-subject-card', homeStage);
+    if (!gsap || state.subject) {
+      introPrepared = false;
+      if (gsap) gsap.set([homeStage, banner, ...cards].filter(Boolean), { clearProps: 'transform,opacity,visibility' });
+      return;
+    }
+    if (useFade()) {
+      gsap.set([banner, ...cards].filter(Boolean), { clearProps: 'transform,opacity,visibility' });
+      if (homeStage) gsap.set(homeStage, { opacity: 0 });
+      introPrepared = true;
+      return;
+    }
+    if (isReduced()) {
+      introPrepared = false;
+      gsap.set([homeStage, banner, ...cards].filter(Boolean), { clearProps: 'transform,opacity,visibility' });
+      return;
+    }
+    if (homeStage) gsap.set(homeStage, { clearProps: 'opacity' });
+    if (banner) gsap.set(banner, { y: -18, scale: 0.9, autoAlpha: 0 });
+    if (cards.length) gsap.set(cards, { y: 24, scale: 0.86, autoAlpha: 0 });
+    introPrepared = true;
+  }
+
+  function playHomeIntroBounce() {
+    const homeStage = $('#liteHomeStage');
+    const banner = $('.lite-home-banner', homeStage);
+    const cards = $$('.lite-subject-card', homeStage);
+    if (!gsap || state.subject) {
+      if (introPrepared && gsap) {
+        gsap.set([homeStage, banner, ...cards].filter(Boolean), { clearProps: 'transform,opacity,visibility' });
+      }
+      introPrepared = false;
+      return;
+    }
+    if (useFade()) {
+      introPrepared = false;
+      gsap.set([banner, ...cards].filter(Boolean), { clearProps: 'transform,opacity,visibility' });
+      if (homeStage) {
+        gsap.killTweensOf(homeStage);
+        gsap.fromTo(homeStage, { opacity: 0 }, { opacity: 1, duration: 0.28, ease: 'power2.out', clearProps: 'opacity' });
+      }
+      return;
+    }
+    if (isReduced()) {
+      if (introPrepared) {
+        gsap.set([homeStage, banner, ...cards].filter(Boolean), { clearProps: 'transform,opacity,visibility' });
+      }
+      introPrepared = false;
+      return;
+    }
+    introPrepared = false;
+    if (homeStage) gsap.set(homeStage, { clearProps: 'opacity' });
     if (banner) {
       gsap.fromTo(
         banner,
@@ -2152,9 +2508,10 @@
     }
   }
 
-  function login(name) {
+  function login(name, options = {}) {
     const cleanName = (name || 'Bạn').trim() || 'Bạn';
     state.user = cleanName;
+    applyMotionAttr();
     document.body.classList.remove('is-locked');
 
     const loginEl = $('#liteLogin');
@@ -2184,7 +2541,11 @@
     const whoEl = $('#liteWho');
     if (whoEl) whoEl.textContent = cleanName;
 
-    playHomeIntroBounce();
+    if (options && options.deferIntro) {
+      prepareHomeIntro();
+    } else {
+      playHomeIntroBounce();
+    }
   }
 
   function logout() {
@@ -2229,16 +2590,21 @@
   }
 
   function initHeaderButtonSprings() {
-    if (!gsap || isReduced() || !global.matchMedia('(hover: hover)').matches) return;
+    if (!gsap || !global.matchMedia('(hover: hover)').matches) return;
 
     const backBtn = $('#liteBack');
     const backIc = $('#liteBackIcon');
     if (backBtn) {
       backBtn.addEventListener('pointerenter', () => {
+        if (isReduced()) return;
         gsap.to(backBtn, { scale: 1.05, duration: 0.3, ease: 'appleBounce', overwrite: 'auto' });
         if (backIc) gsap.to(backIc, { x: -3.5, duration: 0.3, ease: 'appleBounce', overwrite: 'auto' });
       });
       backBtn.addEventListener('pointerleave', () => {
+        if (isReduced()) {
+          gsap.set([backBtn, backIc].filter(Boolean), { clearProps: 'transform' });
+          return;
+        }
         gsap.to(backBtn, { scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
         if (backIc) gsap.to(backIc, { x: 0, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
       });
@@ -2247,9 +2613,14 @@
     const gradeBtn = $('#liteGradeBtn');
     if (gradeBtn) {
       gradeBtn.addEventListener('pointerenter', () => {
+        if (isReduced()) return;
         gsap.to(gradeBtn, { scale: 1.04, duration: 0.3, ease: 'appleBounce', overwrite: 'auto' });
       });
       gradeBtn.addEventListener('pointerleave', () => {
+        if (isReduced()) {
+          gsap.set(gradeBtn, { clearProps: 'transform' });
+          return;
+        }
         gsap.to(gradeBtn, { scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
       });
     }
@@ -2257,9 +2628,14 @@
     const avatar = $('#liteAvatar');
     if (avatar) {
       avatar.addEventListener('pointerenter', () => {
+        if (isReduced()) return;
         gsap.to(avatar, { scale: 1.08, duration: 0.3, ease: 'appleBounce', overwrite: 'auto' });
       });
       avatar.addEventListener('pointerleave', () => {
+        if (isReduced()) {
+          gsap.set(avatar, { clearProps: 'transform' });
+          return;
+        }
         gsap.to(avatar, { scale: 1, duration: 0.28, ease: 'appleSpring', overwrite: 'auto', clearProps: 'transform' });
       });
     }
@@ -2329,6 +2705,9 @@
           { autoAlpha: 0, scale: 0.84, y: -8 },
           { autoAlpha: 1, scale: 1, y: 0, duration: 0.34, ease: 'appleBounce', overwrite: 'auto' }
         );
+      } else if (gsap) {
+        gsap.killTweensOf(menu);
+        gsap.set(menu, { clearProps: 'transform,opacity,visibility' });
       }
     });
 
@@ -2404,5 +2783,9 @@
     login,
     logout,
     toast,
+    prepareHomeIntro,
+    playHomeIntroBounce,
+    getMotionPref,
+    setMotionPref,
   };
 })(window);

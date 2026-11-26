@@ -200,10 +200,47 @@
   color: var(--accent);
 }
 
+/* ---------- Điều chỉnh theo 3 mức: Đầy đủ (full) · Giảm (reduced) · Nhanh (fast) ---------- */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  html:not([data-motion="full"]):not([data-motion="reduced"]) *,
+  html:not([data-motion="full"]):not([data-motion="reduced"]) *::before,
+  html:not([data-motion="full"]):not([data-motion="reduced"]) *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Mức Giảm: giữ nguyên đồ họa & chuyển màu Neon mượt nhẹ, tắt keyframe lặp thừa và giải phóng will-change */
+html.lite-root[data-motion="reduced"] .lite-subject-card,
+html.lite-root[data-motion="reduced"] .lite-section-card {
+  will-change: auto;
+}
+
+html.lite-root[data-motion="reduced"] .lite-bg-layer {
+  transition-duration: 0.3s;
+  will-change: auto;
+}
+
+html.lite-root[data-motion="reduced"] .lite-ripple-wave {
+  display: none !important;
+}
+
+/* Mức Nhanh: giữ nguyên 100% đồ họa tĩnh, cắt sạch mọi chuyển động & transition của khung Giao diện Nhẹ về 0ms */
+html.lite-root[data-motion="fast"] #liteShell *,
+html.lite-root[data-motion="fast"] #liteShell *::before,
+html.lite-root[data-motion="fast"] #liteShell *::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}
+
+html.lite-root[data-motion="fast"] .lite-bg-layer,
+html.lite-root[data-motion="fast"] .lite-subject-card,
+html.lite-root[data-motion="fast"] .lite-section-card,
+html.lite-root[data-motion="fast"] .lite-subject-hero,
+html.lite-root[data-motion="fast"] .lite-detail-panel {
+  will-change: auto !important;
 }

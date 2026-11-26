@@ -6,12 +6,155 @@
   <meta name="theme-color" content="#000000">
   <title>KnowVerse</title>
 
+  <!-- Màn chờ đen kèm vòng chấm xoay chính tâm cố định (100vw/100dvh không lệch khi ẩn/hiện thanh cuộn) -->
+  <style>
+    html.kv-boot:not(.kv-reveal) body > *:not(#kvBoot) { visibility: hidden !important; }
+    #kvBoot {
+      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh;
+      z-index: 99999; background: #000; box-sizing: border-box;
+      align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity .36s cubic-bezier(.22, 1, .36, 1);
+    }
+    html.kv-boot #kvBoot,
+    #kvBoot.is-active {
+      display: flex; opacity: 1; pointer-events: auto;
+    }
+    html.kv-boot #kvBoot.is-out,
+    #kvBoot.is-active.is-out {
+      opacity: 0; pointer-events: none;
+    }
+    #kvBoot.is-enter {
+      opacity: 0;
+    }
+    .kv-boot-spinner {
+      width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+      opacity: 0; transform: scale(.62);
+      transition: opacity .2s ease, transform .26s cubic-bezier(.34, 1.56, .64, 1);
+      will-change: transform, opacity;
+    }
+    #kvBoot.is-dots-on .kv-boot-spinner {
+      opacity: 1; transform: scale(1);
+    }
+    #kvBoot.is-dots-Instant .kv-boot-spinner {
+      transition: none !important;
+    }
+    .kv-boot-dots {
+      width: 40px; height: 40px; display: block; fill: #eef1f6;
+    }
+    .kv-boot-dots circle {
+      opacity: .12;
+      animation: kvDotPulse 1.08s linear infinite;
+      animation-delay: calc(var(--i) * 0.09s - 1.08s);
+    }
+    @keyframes kvDotPulse {
+      0%   { opacity: .12; }
+      12%  { opacity: 1; }
+      45%  { opacity: .32; }
+      78%  { opacity: .12; }
+      100% { opacity: .12; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html:not([data-motion="full"]):not([data-motion="reduced"]) #kvBoot,
+      html:not([data-motion="full"]):not([data-motion="reduced"]) .kv-boot-spinner { transition-duration: .01ms; }
+    }
+  </style>
+  <script>
+    // Chạy đồng bộ trước lần vẽ đầu tiên: bật màn chờ đen và chỉ preload khi đã có phiên chọn giao diện hoặc đang chuyển chế độ
+    (function () {
+      var root = document.documentElement;
+      root.classList.add('kv-boot');
+      try {
+        var mode = null;
+        var handoffRaw = sessionStorage.getItem('knowverse_switch_handoff');
+        if (handoffRaw) {
+          root.dataset.kvSwitching = '1';
+          var handoff = JSON.parse(handoffRaw);
+          if (handoff && (handoff.mode === 'lite' || handoff.mode === '3d')) mode = handoff.mode;
+        } else if (localStorage.getItem('knowverse_mode_chosen_uid')) {
+          var saved = localStorage.getItem('knowverse_device_ui_mode');
+          if (saved === 'lite' || saved === '3d') mode = saved;
+        }
+        if (mode === 'lite') {
+          var m = localStorage.getItem('knowverse_lite_motion');
+          if (m === 'full' || m === 'reduced' || m === 'fast') root.dataset.motion = m;
+        }
+        var assets = {
+          lite: {
+            style: ['styles/lite.css', 'styles/lite-themes.css', 'styles/lite-motion.css'],
+            script: ['js/lite/lite-icons.js', 'js/lite/lite-theme.js', 'js/lite/lite-app.js']
+          },
+          '3d': {
+            style: [
+              'styles/blackhole.css', 'styles/hubs.css', 'styles/grade-core.css',
+              'styles/subject-system.css', 'styles/panel.css', 'styles/detail-modal.css', 'styles/responsive.css'
+            ],
+            script: [
+              'js/engine/sky.js', 'js/engine/accretion.js', 'js/engine/lens.js', 'js/engine/blackhole.js',
+              'js/ui/motion.js', 'js/ui/hubs.js', 'js/ui/grade-core.js', 'js/ui/panel.js',
+              'js/ui/detail-modal.js', 'js/ui/subject-system.js', 'js/app.js'
+            ]
+          }
+        };
+        var pre = mode && assets[mode];
+        if (pre) {
+          ['style', 'script'].forEach(function (as) {
+            pre[as].forEach(function (href) {
+              var l = document.createElement('link');
+              l.rel = 'preload'; l.as = as; l.href = href;
+              document.head.appendChild(l);
+            });
+          });
+        }
+      } catch (e) {}
+      // Chốt an toàn độc lập tại index.html: đề phòng portal.js bị cache cũ hoặc lỗi mạng
+      setTimeout(function () {
+        if (!root.classList.contains('kv-boot')) return;
+        root.classList.remove('kv-boot', 'kv-reveal');
+        var v = document.getElementById('kvBoot');
+        if (v) { v.classList.remove('is-active', 'is-out', 'is-enter', 'is-dots-on'); v.hidden = true; }
+      }, 6500);
+    })();
+  </script>
+
   <!-- Thứ tự CSS: thư viện -> nền tảng dùng chung -> điều phối chế độ (CSS 3D/Nhẹ nạp động theo lựa chọn) -->
   <link rel="stylesheet" href="vendor/lenis.css">
   <link rel="stylesheet" href="styles/base.css">
   <link rel="stylesheet" href="styles/portal.css">
 </head>
 <body class="locked">
+  <div id="kvBoot" aria-hidden="true">
+    <div class="kv-boot-spinner">
+      <svg class="kv-boot-dots" viewBox="0 0 44 44" aria-hidden="true">
+        <circle cx="22" cy="5.5" r="2.1" style="--i:0"/>
+        <circle cx="30.25" cy="7.71" r="2.1" style="--i:1"/>
+        <circle cx="36.29" cy="13.75" r="2.1" style="--i:2"/>
+        <circle cx="38.5" cy="22" r="2.1" style="--i:3"/>
+        <circle cx="36.29" cy="30.25" r="2.1" style="--i:4"/>
+        <circle cx="30.25" cy="36.29" r="2.1" style="--i:5"/>
+        <circle cx="22" cy="38.5" r="2.1" style="--i:6"/>
+        <circle cx="13.75" cy="36.29" r="2.1" style="--i:7"/>
+        <circle cx="7.71" cy="30.25" r="2.1" style="--i:8"/>
+        <circle cx="5.5" cy="22" r="2.1" style="--i:9"/>
+        <circle cx="7.71" cy="13.75" r="2.1" style="--i:10"/>
+        <circle cx="13.75" cy="7.71" r="2.1" style="--i:11"/>
+      </svg>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var v = document.getElementById('kvBoot');
+      if (!v) return;
+      if (document.documentElement.dataset.kvSwitching === '1') {
+        v.classList.add('is-dots-Instant', 'is-dots-on');
+        requestAnimationFrame(function () { v.classList.remove('is-dots-Instant'); });
+      } else {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { v.classList.add('is-dots-on'); });
+        });
+      }
+    })();
+  </script>
 
   <!-- 1. Cảnh hố đen (WebGL2 + Canvas 2D) do engine/blackhole.js dựng khi chọn chế độ 3D -->
   <div id="scene" hidden></div>
@@ -74,7 +217,6 @@
       <div id="menu" hidden>
         <div class="kv-menu-head">
           <div id="who"></div>
-          <div id="menuModeBadge" class="kv-menu-mode"></div>
         </div>
         <div class="kv-menu-divider" aria-hidden="true"></div>
         <div class="kv-menu-list" role="menu">

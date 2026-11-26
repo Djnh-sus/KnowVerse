@@ -18,6 +18,7 @@ if (form) {
 
   if (!url || !key) {
     say('Thiếu cấu hình Supabase: kiểm tra file .env.local (xem README.md).', true);
+    portal?.endBoot?.();
     throw new Error('Missing VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY');
   }
 
@@ -285,6 +286,24 @@ if (form) {
       if (error || !Array.isArray(data)) return [];
       return data;
     },
+    async fetchMyStarStats(userId) {
+      if (!userId) return { avg: 0, count: 0 };
+      try {
+        const { data, error } = await sb.rpc('my_star_stats');
+        if (!error && data && typeof data === 'object') {
+          const row = Array.isArray(data) ? data[0] : data;
+          if (row) {
+            return {
+              avg: Number(row.avg_stars ?? row.avg ?? 0) || 0,
+              count: Number(row.rating_count ?? row.count ?? 0) || 0,
+            };
+          }
+        }
+      } catch {
+        // Sẽ tự hoạt động khi tạo hàm RPC my_star_stats trên Supabase
+      }
+      return { avg: 0, count: 0 };
+    },
   };
 
   sb.auth.onAuthStateChange((event) => {
@@ -308,11 +327,13 @@ if (form) {
       }
       if (session?.user) {
         await afterAuth(session.user);
-      } else if (hasOAuthCode) {
-        say('');
+      } else {
+        if (hasOAuthCode) say('');
+        portal?.endBoot?.();
       }
     } catch (err) {
       say(viError(err?.message), true);
+      portal?.endBoot?.();
     }
   })();
 }

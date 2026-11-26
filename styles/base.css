@@ -211,7 +211,9 @@ input:focus { border-color: #fff; }
   font-size: 22px; font-weight: 700; }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  html:not([data-motion="full"]):not([data-motion="reduced"]) *,
+  html:not([data-motion="full"]):not([data-motion="reduced"]) *::before,
+  html:not([data-motion="full"]):not([data-motion="reduced"]) *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
 @media (prefers-reduced-transparency: reduce) {
   :root { --glass-heavy: rgba(12, 15, 24, .97); --glass: rgba(16, 20, 30, .96); }
