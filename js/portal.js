@@ -636,7 +636,6 @@
       <div class="kv-modal-panel is-narrow">
         <div class="kv-sheet-top">
           <div>
-            <div class="kv-eyebrow">Hồ sơ cá nhân</div>
             <h2 id="kvAccountTitle" class="kv-modal-title">Thông tin tài khoản</h2>
           </div>
           <button type="button" class="kv-close-btn" data-close-modal aria-label="Đóng bảng tài khoản">
@@ -654,7 +653,7 @@
               <span id="kvProfileRole" class="kv-chip" hidden>Thành viên</span>
             </div>
           </div>
-          <div class="kv-profile-stars" title="Điểm đánh giá trung bình (0–5) và số lượt đánh giá" aria-label="Điểm đánh giá trung bình">
+          <div class="kv-profile-stars" title="Điểm đánh giá trung bình (0-5) và số lượt đánh giá" aria-label="Điểm đánh giá trung bình">
             <svg class="kv-star-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M12 2.4l2.92 5.92 6.53.95-4.72 4.6 1.11 6.5L12 17.3l-5.84 3.07 1.11-6.5-4.72-4.6 6.53-.95L12 2.4z"/>
             </svg>
@@ -681,9 +680,7 @@
               </svg>
             </span>
             <p class="kv-empty-title">Chưa có bài đăng nào</p>
-            <p class="kv-empty-desc">
-              Vùng hiển thị bài đăng của bản thân đã thiết kế sẵn (để trống chờ kết nối dữ liệu).
-            </p>
+            <p class="kv-empty-desc">Bài bạn đăng sẽ hiện ở đây.</p>
           </div>
         </div>
       </div>
@@ -698,7 +695,7 @@
     });
 
     $('#kvNewPostStub')?.addEventListener('click', () => {
-      toast('Chức năng đăng bài sẽ hoạt động khi nối Supabase.');
+      toast('Tính năng đăng bài sắp mở.');
     });
 
     return overlay;
@@ -840,9 +837,7 @@
       <div class="kv-modal-panel is-narrow">
         <div class="kv-sheet-top">
           <div>
-            <div class="kv-eyebrow">Tùy chỉnh hệ thống</div>
             <h2 id="kvSettingsTitle" class="kv-modal-title">Cài đặt</h2>
-            <p class="kv-modal-sub">Các tùy chọn thiết lập của KnowVerse trên thiết bị này.</p>
           </div>
           <button type="button" class="kv-close-btn" data-close-modal aria-label="Đóng cài đặt">
             ${closeIconMarkup()}
@@ -863,7 +858,7 @@
                 </span>
                 <div class="kv-setting-meta">
                   <h3 class="kv-setting-name">Giao diện &amp; Hiển thị</h3>
-                  <p id="kvDisplayGroupSummary" class="kv-setting-desc">Chế độ giao diện và mức hiệu ứng hiển thị</p>
+                  <p id="kvDisplayGroupSummary" class="kv-setting-desc">Chế độ giao diện và hiệu ứng</p>
                 </div>
               </div>
               <span class="kv-setting-chev" aria-hidden="true">
@@ -889,7 +884,7 @@
                   <div class="kv-setting-subrow" data-lite-motion-row>
                     <div class="kv-setting-submeta">
                       <h4 class="kv-setting-subname">Chuyển động &amp; Hiệu ứng</h4>
-                      <p id="kvMotionSettingDesc" class="kv-setting-desc">Mức hiệu ứng áp dụng cho Giao diện Nhẹ</p>
+                      <p id="kvMotionSettingDesc" class="kv-setting-desc">Áp dụng cho Giao diện Nhẹ</p>
                     </div>
                     <div class="kv-setting-right">
                       <div class="kv-seg" role="radiogroup" aria-label="Chuyển động và hiệu ứng Giao diện Nhẹ" style="--seg-idx: 0">
@@ -914,11 +909,11 @@
               </span>
               <div class="kv-setting-meta">
                 <h3 class="kv-setting-name">Thông báo học tập</h3>
-                <p class="kv-setting-desc">Nhắc lịch ôn tập và cập nhật tài liệu mới theo khối</p>
+                <p class="kv-setting-desc">Nhắc lịch ôn và tài liệu mới</p>
               </div>
             </div>
             <div class="kv-setting-right">
-              <span class="kv-row-pill">Mẫu</span>
+              <span class="kv-row-pill">Sắp có</span>
             </div>
           </div>
 
@@ -931,11 +926,11 @@
               </span>
               <div class="kv-setting-meta">
                 <h3 class="kv-setting-name">Tài khoản &amp; Bảo mật</h3>
-                <p class="kv-setting-desc">Liên kết email, đổi mật khẩu và quản lý phiên đăng nhập</p>
+                <p class="kv-setting-desc">Đổi mật khẩu và phiên đăng nhập</p>
               </div>
             </div>
             <div class="kv-setting-right">
-              <span class="kv-row-pill">Mẫu</span>
+              <span class="kv-row-pill">Sắp có</span>
             </div>
           </div>
 
@@ -948,11 +943,11 @@
               </span>
               <div class="kv-setting-meta">
                 <h3 class="kv-setting-name">Đồng bộ dữ liệu đám mây</h3>
-                <p class="kv-setting-desc">Tự động lưu giao diện ưa thích và bài học trên mọi thiết bị</p>
+                <p class="kv-setting-desc">Lưu cài đặt và bài học giữa các thiết bị</p>
               </div>
             </div>
             <div class="kv-setting-right">
-              <span class="kv-row-pill">Mẫu</span>
+              <span class="kv-row-pill">Sắp có</span>
             </div>
           </div>
         </div>
@@ -1006,7 +1001,7 @@
 
     overlay.querySelectorAll('[data-sample-setting]').forEach((row) => {
       row.addEventListener('click', () => {
-        toast(`Mục "${row.dataset.sampleSetting}" là khung mẫu chờ kết nối.`);
+        toast(`"${row.dataset.sampleSetting}" hiện chưa mở.`);
       });
     });
 
@@ -1044,7 +1039,6 @@
       <div class="kv-modal-panel kv-mode-panel">
         <div class="kv-sheet-top">
           <div>
-            <div class="kv-eyebrow">Đổi giao diện hiển thị</div>
             <h2 id="kvSwitchTitle" class="kv-modal-title">Chọn giao diện bạn muốn dùng</h2>
           </div>
           <button type="button" class="kv-close-btn" data-close-switch aria-label="Đóng bảng đổi giao diện">
@@ -1066,10 +1060,9 @@
               </div>
               <span class="kv-mode-tags">
                 <span class="kv-mode-tag is-highlight" data-active-badge="3d" hidden>Đang dùng</span>
-                <span class="kv-mode-tag" data-idle-tag="3d">Đồ họa 3D</span>
               </span>
             </div>
-            <p class="kv-mode-desc">Không gian vũ trụ 3D sống động với hiệu ứng chiều sâu.</p>
+            <p class="kv-mode-desc">Bản đồ môn học 3D quanh hố đen, hợp với máy mạnh.</p>
             <span class="kv-mode-cta" data-switch-cta="3d">Chuyển sang 3D →</span>
           </button>
 
@@ -1087,10 +1080,9 @@
               </div>
               <span class="kv-mode-tags">
                 <span class="kv-mode-tag is-highlight" data-active-badge="lite" hidden>Đang dùng</span>
-                <span class="kv-mode-tag" data-idle-tag="lite">Tối ưu tốc độ</span>
               </span>
             </div>
-            <p class="kv-mode-desc">Bố cục thẻ 2D gọn nhẹ, phản hồi nhanh và tiết kiệm pin.</p>
+            <p class="kv-mode-desc">Dạng thẻ 2D nhẹ, mượt trên điện thoại và máy yếu.</p>
             <span class="kv-mode-cta" data-switch-cta="lite">Chuyển sang Nhẹ →</span>
           </button>
         </div>
@@ -1136,10 +1128,8 @@
       btn.classList.toggle('is-active', isCurrent);
       btn.disabled = isCurrent;
       const badge = btn.querySelector(`[data-active-badge="${m}"]`);
-      const idleTag = btn.querySelector(`[data-idle-tag="${m}"]`);
       const cta = btn.querySelector(`[data-switch-cta="${m}"]`);
       if (badge) badge.hidden = !isCurrent;
-      if (idleTag) idleTag.hidden = isCurrent;
       if (cta) {
         cta.textContent = isCurrent
           ? 'Đang sử dụng'
@@ -1282,8 +1272,7 @@
     overlay.innerHTML = `
       <div class="kv-modal-panel kv-mode-panel">
         <div class="kv-modal-head">
-          <div class="kv-eyebrow">Chọn giao diện hiển thị</div>
-          <h2 id="kvModeTitle" class="kv-modal-title">Bạn muốn chạy KnowVerse bằng giao diện nào?</h2>
+          <h2 id="kvModeTitle" class="kv-modal-title">Chọn giao diện hiển thị</h2>
         </div>
 
         <div class="kv-mode-grid">
@@ -1299,11 +1288,8 @@
                 </span>
                 <h3 class="kv-mode-name">Không gian 3D (Hố đen)</h3>
               </div>
-              <span class="kv-mode-tags">
-                <span class="kv-mode-tag">Đồ họa 3D</span>
-              </span>
             </div>
-            <p class="kv-mode-desc">Không gian vũ trụ 3D sống động với hiệu ứng chiều sâu.</p>
+            <p class="kv-mode-desc">Bản đồ môn học 3D quanh hố đen, hợp với máy mạnh.</p>
             <span class="kv-mode-cta">Vào giao diện 3D →</span>
           </button>
 
@@ -1319,11 +1305,8 @@
                 </span>
                 <h3 class="kv-mode-name">Giao diện Nhẹ (2D)</h3>
               </div>
-              <span class="kv-mode-tags">
-                <span class="kv-mode-tag">Tối ưu tốc độ</span>
-              </span>
             </div>
-            <p class="kv-mode-desc">Bố cục thẻ 2D gọn nhẹ, phản hồi nhanh và tiết kiệm pin.</p>
+            <p class="kv-mode-desc">Dạng thẻ 2D nhẹ, mượt trên điện thoại và máy yếu.</p>
             <span class="kv-mode-cta">Vào Giao diện Nhẹ →</span>
           </button>
         </div>

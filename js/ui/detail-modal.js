@@ -80,7 +80,9 @@
       if (!filtered.length) {
         const empty = document.createElement('div');
         empty.className = 'detail-empty';
-        empty.textContent = 'Không tìm thấy nội dung phù hợp.';
+        empty.textContent = items.length === 0
+          ? 'Chưa có nội dung nào.'
+          : 'Không tìm thấy nội dung phù hợp.';
         listEl.appendChild(empty);
         return;
       }
@@ -230,7 +232,7 @@
       search.type = 'search';
       search.id = 'detailSearch';
       search.className = 'detail-search';
-      search.placeholder = `Tìm nhanh trong ${sec.title.toLowerCase()}…`;
+      search.placeholder = `Tìm trong ${sec.title.toLowerCase()}...`;
       search.autocomplete = 'off';
 
       const uploadBtn = document.createElement('button');
@@ -247,10 +249,6 @@
       const listSection = document.createElement('div');
       listSection.className = 'detail-list-section';
 
-      const listLabel = document.createElement('h3');
-      listLabel.className = 'detail-list-label';
-      listLabel.textContent = `Danh sách ${sec.title} · ${subjectName}`;
-
       const listWrap = document.createElement('div');
       listWrap.className = 'detail-list-wrap';
       listWrap.setAttribute('data-lenis-prevent', '');
@@ -259,7 +257,7 @@
       listEl.className = 'detail-list';
 
       listWrap.appendChild(listEl);
-      listSection.append(listLabel, listWrap);
+      listSection.append(listWrap);
       extra.appendChild(listSection);
 
       panel.appendChild(extra);

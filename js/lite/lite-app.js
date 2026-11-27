@@ -326,7 +326,7 @@
               { x: 0, duration: 0.46, ease: 'elastic.out(1.45, 0.28)', overwrite: 'auto' }
             );
           }
-          toast(`${item.label} sắp mở — hiện đang mở Khối ${state.grade}`);
+          toast(`${item.label} sắp mở. Hiện chỉ mở Khối ${state.grade}.`);
           return;
         }
         state.grade = item.grade;
@@ -408,10 +408,6 @@
     const banner = document.createElement('div');
     banner.className = 'lite-home-banner';
 
-    const kicker = document.createElement('span');
-    kicker.className = 'lite-home-kicker';
-    kicker.textContent = 'Không gian học tập';
-
     const title = document.createElement('h1');
     title.className = 'lite-home-title';
     title.textContent = 'KnowVerse';
@@ -424,7 +420,7 @@
     divider.className = 'lite-home-divider';
     divider.setAttribute('aria-hidden', 'true');
 
-    banner.append(kicker, title, info, divider);
+    banner.append(title, info, divider);
 
     const row = document.createElement('div');
     row.className = 'lite-subjects-row';
@@ -1550,7 +1546,7 @@
 
       row.append(left, right);
       row.addEventListener('click', () => {
-        toast(`${subjectName} · ${item.title} (nối nội dung thật ở bước sau)`);
+        toast('Nội dung này sắp mở.');
       });
 
       if (gsap && global.matchMedia('(hover: hover)').matches) {
@@ -1789,7 +1785,7 @@
     const searchInput = document.createElement('input');
     searchInput.type = 'search';
     searchInput.className = 'lite-search-input';
-    searchInput.placeholder = `Tìm nhanh trong ${sec.title.toLowerCase()}…`;
+    searchInput.placeholder = `Tìm trong ${sec.title.toLowerCase()}...`;
     searchInput.autocomplete = 'off';
 
     searchWrap.append(searchIcon, searchInput);
@@ -1807,7 +1803,7 @@
 
     uploadBtn.append(uploadIcon, uploadText);
     uploadBtn.onclick = () => {
-      toast(`Đăng tải vào "${sec.title}" môn ${subjectName} (làm ở bước nối Supabase)`);
+      toast('Tính năng tải lên sắp mở.');
     };
 
     if (gsap && global.matchMedia('(hover: hover)').matches) {
@@ -1998,14 +1994,14 @@
 
     if (searchInput) {
       searchInput.value = '';
-      searchInput.placeholder = `Tìm nhanh trong ${sec.title.toLowerCase()}…`;
+      searchInput.placeholder = `Tìm trong ${sec.title.toLowerCase()}...`;
       searchInput.oninput = () => renderDetailRows(listEl, subjectName, sec, items, searchInput.value, false);
     }
 
     if (uploadBtn) {
       const txtEl = uploadBtn.querySelector('span:last-child');
       if (txtEl) txtEl.textContent = (sec.uploadLabel || '+ Đăng tải').replace(/^\+\s*/, '');
-      uploadBtn.onclick = () => toast(`Đăng tải vào "${sec.title}" môn ${subjectName} (làm ở bước nối Supabase)`);
+      uploadBtn.onclick = () => toast('Tính năng tải lên sắp mở.');
     }
 
     if (listEl && listWrap) {

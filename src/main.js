@@ -194,6 +194,7 @@ if (form) {
     const showPass = nextMode === 'signin' || nextMode === 'signup' || nextMode === 'reset' || askPw;
     const newPw = nextMode === 'signup' || nextMode === 'reset' || askPw;
     const showName = nextMode === 'signup' || nextMode === 'profile';
+    const showSocial = isWelcome || nextMode === 'signup';
     const showBack = nextMode === 'signin';
 
     if (isWelcome) {
@@ -207,8 +208,8 @@ if (form) {
     syncVerifySubtitle();
 
     if (backAuthBtn) backAuthBtn.hidden = !showBack;
-    if (googleBtn) googleBtn.hidden = !isWelcome;
-    if (orRow) orRow.hidden = !isWelcome;
+    if (googleBtn) googleBtn.hidden = !showSocial;
+    if (orRow) orRow.hidden = !showSocial;
     if (emailEntryBtn) emailEntryBtn.hidden = !isWelcome;
 
     emailEl.closest('label').hidden = !showEmail;
@@ -333,7 +334,7 @@ if (form) {
     if (cleanName.length < 2 || cleanName.length > 30) {
       portal?.showLoginStep?.();
       if (mode !== 'profile' && mode !== 'signup') setMode('profile');
-      setFieldError('name', cleanName ? 'Từ 2–30 ký tự' : 'Chưa nhập tên');
+      setFieldError('name', cleanName ? '2-30 ký tự' : 'Chưa nhập tên');
       focusFirstInvalid(['name']);
       return;
     }
@@ -406,7 +407,7 @@ if (form) {
     if (mode === 'signup' || mode === 'profile') {
       order.push('name');
       if (!nm) setFieldError('name', 'Chưa nhập tên');
-      else if (nm.length < 2 || nm.length > 30) setFieldError('name', 'Từ 2–30 ký tự');
+      else if (nm.length < 2 || nm.length > 30) setFieldError('name', '2-30 ký tự');
     }
 
     if (mode === 'signin' || mode === 'signup' || mode === 'forgot') {
@@ -499,7 +500,7 @@ if (form) {
             verifyJustSent = false;
             passEl.value = '';
             setMode('verify', { animate: true });
-            return popup('Email chưa được xác nhận — mở thư hoặc bấm gửi lại.', 3600);
+            return popup('Email chưa xác nhận. Hãy mở thư hoặc bấm gửi lại.', 3600);
           }
           throw error;
         }
@@ -525,7 +526,7 @@ if (form) {
         pass2El.value = '';
         setMode('verify', { animate: true });
         startCooldown(60);
-        return popup('Đã gửi thư xác nhận — kiểm tra cả mục Spam.', 3400);
+        return popup('Đã gửi thư xác nhận. Kiểm tra cả mục Spam.', 3400);
       }
       portal?.clearModeChosen?.();
       await createProfile(data.user, nm);

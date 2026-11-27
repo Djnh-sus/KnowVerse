@@ -113,8 +113,7 @@
     {
       key: 'ly-thuyet',
       title: 'Lý thuyết',
-      desc: 'Kiến thức theo từng bài, nhiều người cùng đóng góp',
-      modalDesc: 'Danh sách bài học chi tiết theo chương trình. Hỗ trợ nhiều người cùng đóng góp và cập nhật tài liệu.',
+      desc: 'Bài học theo chương trình, mọi người cùng đóng góp.',
       uploadLabel: '+ Đóng góp bài học',
       angleDeg: -145,
       iconLabel: 'Lý thuyết',
@@ -126,8 +125,7 @@
     {
       key: 'tu-luyen',
       title: 'Tự luyện',
-      desc: 'Làm quiz theo bộ đề hoặc bốc từ ngân hàng chung',
-      modalDesc: 'Chọn bộ đề luyện tập hoặc bốc câu hỏi ngẫu nhiên từ ngân hàng câu hỏi chung của cộng đồng.',
+      desc: 'Làm theo bộ đề hoặc câu hỏi ngẫu nhiên.',
       uploadLabel: '+ Thêm bộ đề Quiz',
       angleDeg: -35,
       iconLabel: 'Tự luyện',
@@ -140,8 +138,7 @@
     {
       key: 'tai-len',
       title: 'Tóm tắt và công thức',
-      desc: 'Kiến thức ngắn gọn, công thức, file HTML do mọi người tải lên',
-      modalDesc: 'Kho tóm tắt ngắn gọn, bảng công thức và các file HTML tương tác do cộng đồng tải lên (chạy trong khung cách ly).',
+      desc: 'Tóm tắt, công thức do mọi người tải lên.',
       uploadLabel: '+ Tải lên file HTML',
       angleDeg: 90,
       iconLabel: 'Công thức',
@@ -158,7 +155,7 @@
       return (info.lessons || []).map((name, i) => ({
         index: i + 1,
         title: `Bài ${i + 1}: ${name}`,
-        meta: `Môn ${subjectName} · Tài liệu lý thuyết & ví dụ minh họa`,
+        meta: `Môn ${subjectName} · Lý thuyết`,
         tag: 'Bài học',
         action: 'Đọc bài ↗',
       }));
