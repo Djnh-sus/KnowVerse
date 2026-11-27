@@ -23,7 +23,6 @@
 
   const LITE_MOTION_CHOICES = [
     { key: 'full', label: 'Đầy đủ' },
-    { key: 'reduced', label: 'Giảm' },
     { key: 'fast', label: 'Nhanh' },
   ];
 
@@ -151,7 +150,7 @@
   }
 
   function isValidLiteMotion(val) {
-    return val === 'full' || val === 'reduced' || val === 'fast';
+    return val === 'full' || val === 'fast';
   }
 
   function getLiteMotionPref() {
@@ -163,7 +162,7 @@
     }
     const mem = memoryStore[LITE_MOTION_KEY];
     if (isValidLiteMotion(mem)) return mem;
-    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full';
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'fast' : 'full';
   }
 
   function syncDocumentMotionAttr() {
@@ -236,6 +235,11 @@
     return null;
   }
 
+  function hasAuthHash() {
+    const h = window.location.hash || '';
+    return /(?:^#|&)(?:access_token|refresh_token|provider_token|error_code|error_description|type)=/i.test(h);
+  }
+
   function clearUrlHash() {
     if (!window.location.hash) return;
     try {
@@ -246,9 +250,10 @@
   }
 
   // ---------- Toast dùng chung ----------
-  function toast(text) {
+  function toast(text, options = {}) {
     const el = $('#toast');
-    if (!el) return;
+    if (!el || !text) return;
+    const holdMs = Number(options && options.duration) > 0 ? Number(options.duration) : 2400;
     el.textContent = text;
     el.hidden = false;
     clearTimeout(toastTimer);
@@ -258,12 +263,9 @@
       if (motion === 'full') {
         window.gsap.fromTo(
           el,
-          { opacity: 0, y: 10, scale: 0.94 },
-          { opacity: 1, y: 0, scale: 1, duration: 0.28, ease: 'power3.out' }
+          { opacity: 0, xPercent: -50, x: 0, y: 10, scale: 0.94 },
+          { opacity: 1, xPercent: -50, x: 0, y: 0, scale: 1, duration: 0.28, ease: 'power3.out' }
         );
-      } else if (motion === 'reduced') {
-        window.gsap.set(el, { clearProps: 'transform' });
-        window.gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.15, ease: 'power1.out' });
       } else {
         window.gsap.set(el, { clearProps: 'transform,opacity' });
       }
@@ -273,8 +275,8 @@
       if (window.gsap && m !== 'fast') {
         window.gsap.to(el, {
           opacity: 0,
-          y: m === 'full' ? -6 : 0,
-          duration: m === 'full' ? 0.22 : 0.14,
+          y: -6,
+          duration: 0.22,
           ease: 'power2.in',
           onComplete: () => {
             el.hidden = true;
@@ -287,7 +289,7 @@
         el.style.opacity = '';
         el.style.transform = '';
       }
-    }, 2400);
+    }, holdMs);
   }
 
   // ---------- Màn chờ đen kèm vòng xoay (#kvBoot) ----------
@@ -471,10 +473,13 @@
     `;
   }
 
-  function animateModalOpen(overlay) {
+  function animateModalOpen(overlay, options = {}) {
     if (!overlay) return;
+    const keepBackdrop = !!(options && options.keepBackdrop);
     overlay._closing = false;
     overlay.style.pointerEvents = '';
+    overlay.classList.remove('is-handoff-out');
+    overlay.classList.toggle('is-handoff-in', keepBackdrop);
     const panel = overlay.querySelector('.kv-modal-panel');
     if (!window.gsap) return;
 
@@ -484,15 +489,11 @@
       window.gsap.set([overlay, panel].filter(Boolean), { clearProps: 'transform,opacity' });
       return;
     }
-    if (motion === 'reduced') {
-      window.gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: 'power2.out', clearProps: 'opacity' });
-      if (panel) {
-        window.gsap.set(panel, { clearProps: 'transform' });
-        window.gsap.fromTo(panel, { opacity: 0 }, { opacity: 1, duration: 0.22, ease: 'power2.out', clearProps: 'opacity' });
-      }
-      return;
+    if (keepBackdrop) {
+      window.gsap.set(overlay, { clearProps: 'opacity' });
+    } else {
+      window.gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.24, ease: 'power2.out', clearProps: 'opacity' });
     }
-    window.gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.24, ease: 'power2.out', clearProps: 'opacity' });
     if (panel) {
       window.gsap.fromTo(
         panel,
@@ -521,11 +522,13 @@
   function closePortalModal(overlay, options = {}) {
     if (!overlay || overlay.hidden) return;
     const immediate = !!(options && options.immediate);
+    const handoffOut = !!(options && options.handoffOut);
     const panel = overlay.querySelector('.kv-modal-panel');
     const finish = () => {
       overlay._closing = false;
       overlay.hidden = true;
       overlay.style.pointerEvents = '';
+      overlay.classList.remove('is-handoff-out', 'is-handoff-in');
       if (window.gsap) {
         window.gsap.set([overlay, panel].filter(Boolean), { clearProps: 'transform,opacity' });
       }
@@ -542,14 +545,26 @@
     if (overlay._closing) return;
     overlay._closing = true;
     overlay.style.pointerEvents = 'none';
+    if (handoffOut) {
+      overlay.classList.remove('is-handoff-in');
+      overlay.classList.add('is-handoff-out');
+    }
     syncModalBodyState();
     window.gsap.killTweensOf([overlay, panel].filter(Boolean));
 
-    if (motion === 'reduced') {
-      window.gsap.to([panel, overlay].filter(Boolean), {
+    if (handoffOut) {
+      window.gsap.set(overlay, { clearProps: 'opacity' });
+      if (!panel) {
+        finish();
+        return;
+      }
+      // Ở chế độ Đầy đủ / 3D: bảng cũ thu gọn lùi lại phía sau trong khi bảng mới bung ra phía trên
+      window.gsap.to(panel, {
         opacity: 0,
-        duration: 0.18,
-        ease: 'power1.in',
+        y: 12,
+        scale: 0.86,
+        duration: 0.24,
+        ease: 'power2.in',
         onComplete: finish,
       });
       return;
@@ -572,10 +587,22 @@
     });
   }
 
+  function closeOtherInfoModalsForHandoff(targetSelector) {
+    let hadOpen = false;
+    ['#accountOverlay', '#settingsOverlay', '#modeSwitchOverlay'].forEach((sel) => {
+      if (sel === targetSelector) return;
+      const el = $(sel);
+      if (el && !el.hidden && !el._closing) {
+        hadOpen = true;
+        closePortalModal(el, { handoffOut: true });
+      }
+    });
+    return hadOpen;
+  }
+
   function closeAnyInfoModal() {
     const sw = $('#modeSwitchOverlay');
     if (sw && !sw.hidden && !sw._closing) {
-      closePortalModal(sw, { immediate: true });
       openSettingsModal({ expandDisplay: true });
       return true;
     }
@@ -679,7 +706,7 @@
 
   function openAccountModal() {
     closeAccountMenu(true);
-    ['#settingsOverlay', '#modeSwitchOverlay'].forEach((s) => closePortalModal($(s), { immediate: true }));
+    const keepBackdrop = closeOtherInfoModalsForHandoff('#accountOverlay');
     const overlay = ensureAccountOverlay();
     const user = state.user || { name: 'Bạn', email: '', provider: 'email' };
 
@@ -742,7 +769,7 @@
 
     overlay.hidden = false;
     syncModalBodyState();
-    animateModalOpen(overlay);
+    animateModalOpen(overlay, { keepBackdrop });
   }
 
   // ---------- Modal 2: Cài đặt (Mục mở rộng "Giao diện & Hiển thị" + các mục mẫu) ----------
@@ -949,7 +976,6 @@
     });
 
     overlay.querySelector('#kvOpenModeSwitchBtn')?.addEventListener('click', () => {
-      closePortalModal(overlay, { immediate: true });
       openModeSwitchModal();
     });
 
@@ -989,7 +1015,7 @@
 
   function openSettingsModal(options = {}) {
     closeAccountMenu(true);
-    ['#accountOverlay', '#modeSwitchOverlay'].forEach((s) => closePortalModal($(s), { immediate: true }));
+    const keepBackdrop = closeOtherInfoModalsForHandoff('#settingsOverlay');
     const overlay = ensureSettingsOverlay();
     if (options && options.expandDisplay) {
       setDisplayGroupExpanded(overlay, true);
@@ -998,7 +1024,7 @@
 
     overlay.hidden = false;
     syncModalBodyState();
-    animateModalOpen(overlay);
+    animateModalOpen(overlay, { keepBackdrop });
   }
 
   // ---------- Modal 2B: Bảng đổi giao diện (chỉ mở khi bấm nút Đổi trong Cài đặt) ----------
@@ -1084,7 +1110,6 @@
     });
 
     overlay.querySelector('#kvBackToSettingsBtn')?.addEventListener('click', () => {
-      closePortalModal(overlay, { immediate: true });
       openSettingsModal({ expandDisplay: true });
     });
 
@@ -1092,7 +1117,6 @@
       btn.addEventListener('click', () => {
         const targetMode = btn.dataset.switchMode;
         if (!isValidMode(targetMode) || targetMode === state.mode) return;
-        closePortalModal(overlay, { immediate: true });
         switchMode(targetMode);
       });
     });
@@ -1102,7 +1126,7 @@
 
   function openModeSwitchModal() {
     closeAccountMenu(true);
-    ['#accountOverlay', '#settingsOverlay'].forEach((s) => closePortalModal($(s), { immediate: true }));
+    const keepBackdrop = closeOtherInfoModalsForHandoff('#modeSwitchOverlay');
     const overlay = ensureModeSwitchOverlay();
     const current = state.mode;
 
@@ -1127,7 +1151,7 @@
 
     overlay.hidden = false;
     syncModalBodyState();
-    animateModalOpen(overlay);
+    animateModalOpen(overlay, { keepBackdrop });
   }
 
   // ---------- Tài khoản góc phải (#me / #avatar / #menu — bung ra và thu vào từ phía sau #avatar) ----------
@@ -1156,11 +1180,6 @@
     menu.style.pointerEvents = 'none';
     window.gsap.killTweensOf(menu);
 
-    if (motion === 'reduced') {
-      window.gsap.to(menu, { opacity: 0, duration: 0.16, ease: 'power1.in', onComplete: finish });
-      return;
-    }
-
     window.gsap.to(menu, {
       opacity: 0,
       scale: 0.16,
@@ -1185,11 +1204,6 @@
     const motion = effectivePortalMotion();
     if (motion === 'fast') {
       window.gsap.set(menu, { clearProps: 'transform,opacity' });
-      return;
-    }
-    if (motion === 'reduced') {
-      window.gsap.set(menu, { clearProps: 'transform' });
-      window.gsap.fromTo(menu, { opacity: 0 }, { opacity: 1, duration: 0.18, ease: 'power2.out', clearProps: 'opacity' });
       return;
     }
     window.gsap.fromTo(
@@ -1534,7 +1548,20 @@
       return;
     }
     closeAccountMenu(true);
-    ['#accountOverlay', '#settingsOverlay', '#modeSwitchOverlay'].forEach((s) => closePortalModal($(s), { immediate: true }));
+
+    // Giữ nguyên lớp nền tối của modal phía dưới khi #kvBoot phủ đen lên để không bị nháy sáng giữa chừng
+    const motion = effectivePortalMotion();
+    ['#accountOverlay', '#settingsOverlay', '#modeSwitchOverlay'].forEach((sel) => {
+      const ov = $(sel);
+      if (!ov || ov.hidden) return;
+      ov.style.pointerEvents = 'none';
+      const panel = ov.querySelector('.kv-modal-panel');
+      if (panel && window.gsap && motion !== 'fast') {
+        window.gsap.killTweensOf(panel);
+        window.gsap.to(panel, { opacity: 0, scale: 0.9, y: 12, duration: 0.24, ease: 'power2.in' });
+      }
+    });
+
     await showVeil();
     writeSwitchHandoff({ user: state.user, mode: newMode });
     clearUrlHash();
@@ -1574,26 +1601,74 @@
       return;
     }
 
-    // Luôn bắt đầu sạch ở màn hình đăng nhập 1 màu
-    clearUrlHash();
+    // Luôn bắt đầu sạch ở màn hình đăng nhập 1 màu (giữ nguyên hash nếu là callback xác thực của Supabase)
+    if (!hasAuthHash()) clearUrlHash();
     document.body.className = 'locked';
 
     if (IS_FILE_PROTOCOL) {
       endBoot(); // chạy cục bộ không có bước khôi phục phiên
       // Dự phòng đăng nhập mẫu khi người dùng mở trực tiếp bằng file:/// (trình duyệt chặn ES module)
-      const noteEl = $('#loginForm .note');
-      if (noteEl) {
-        noteEl.textContent = 'Đang chạy cục bộ (file://): dùng đăng nhập mẫu. Chạy "npm run dev" để dùng Supabase.';
-      }
+      toast('Chế độ cục bộ (file://): dùng đăng nhập mẫu', { duration: 3200 });
+      const emailEl = $('#email');
+      const passEl = $('#pass');
+      const emailErr = $('[data-err="email"]');
+      const passErr = $('[data-err="pass"]');
+      const backAuthBtn = $('#kvBackAuth');
+      const googleBtn = $('#google');
+      const orRow = $('#loginForm .or');
+      const emailEntryBtn = $('#kvEmailEntry');
+      const submitBtn = $('#loginForm button[type="submit"]');
+
+      const setLocalView = (showEmailForm) => {
+        if (backAuthBtn) backAuthBtn.hidden = !showEmailForm;
+        if (googleBtn) googleBtn.hidden = showEmailForm;
+        if (orRow) orRow.hidden = showEmailForm;
+        if (emailEntryBtn) emailEntryBtn.hidden = showEmailForm;
+        if (emailEl?.closest('label')) emailEl.closest('label').hidden = !showEmailForm;
+        if (passEl?.closest('label')) passEl.closest('label').hidden = !showEmailForm;
+        if (submitBtn) submitBtn.hidden = !showEmailForm;
+        if (emailErr) emailErr.textContent = '';
+        if (passErr) passErr.textContent = '';
+        emailEl?.classList.remove('is-invalid');
+        passEl?.classList.remove('is-invalid');
+      };
+
+      emailEntryBtn?.addEventListener('click', () => {
+        setLocalView(true);
+        emailEl?.focus();
+      });
+      backAuthBtn?.addEventListener('click', () => setLocalView(false));
+      emailEl?.addEventListener('input', () => {
+        if (emailErr) emailErr.textContent = '';
+        emailEl.classList.remove('is-invalid');
+      });
+      passEl?.addEventListener('input', () => {
+        if (passErr) passErr.textContent = '';
+        passEl.classList.remove('is-invalid');
+      });
+
       $('#loginForm')?.addEventListener('submit', (e) => {
         e.preventDefault();
         if (state.isBooting) return;
-        const email = ($('#email')?.value || '').trim();
+        const email = (emailEl?.value || '').trim();
+        const pw = passEl?.value || '';
+        let bad = false;
+        if (!email) {
+          if (emailErr) emailErr.textContent = 'Chưa nhập email';
+          emailEl?.classList.add('is-invalid');
+          bad = true;
+        }
+        if (!pw) {
+          if (passErr) passErr.textContent = 'Chưa nhập mật khẩu';
+          passEl?.classList.add('is-invalid');
+          bad = true;
+        }
+        if (bad) return;
         const name = (email.split('@')[0] || 'Bạn').trim() || 'Bạn';
         handleAuthenticated({ name, email, provider: 'email' });
       });
 
-      $('#google')?.addEventListener('click', () => {
+      googleBtn?.addEventListener('click', () => {
         if (state.isBooting) return;
         handleAuthenticated({ name: 'Bạn', email: '', provider: 'google' });
       });

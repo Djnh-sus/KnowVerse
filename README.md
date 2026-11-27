@@ -27,6 +27,7 @@ Ngay sau khi đăng nhập, người dùng có thể lựa chọn trải nghiệ
   - Hoạt ảnh giao diện chuẩn xác với **GSAP**, **CustomEase**, **GSAP Flip** kết hợp cuộn mượt **Lenis**.
 - **Tài khoản & Đóng góp học liệu:**
   - Hỗ trợ đăng ký/đăng nhập qua Email & Mật khẩu hoặc Google OAuth (đồng bộ mật khẩu ngay lần đầu đăng nhập Google).
+  - Xác nhận email khi đăng ký và Quên mật khẩu qua thư (SMTP tùy chỉnh, link mở được cả ở thiết bị khác). Cách cấu hình: `supabase/AUTH_SETUP.md`.
   - Quản lý hồ sơ cá nhân, vai trò người dùng và danh sách bài đăng đóng góp thông qua nền tảng **Supabase**.
 
 ---
@@ -60,5 +61,5 @@ KnowVerse/
 │   └── lite/               # Toàn bộ logic, chủ đề màu và biểu tượng của Giao diện Nhẹ 2D
 ├── styles/                 # Hệ thống stylesheet tách riêng cho khung chung, chế độ 3D và Giao diện Nhẹ
 ├── vendor/                 # Các thư viện hoạt ảnh đóng gói sẵn (GSAP, CustomEase, Flip, Lenis...)
-└── supabase/               # Cấu trúc cơ sở dữ liệu (schema.sql, seed.sql, lịch sử migrations)
+└── supabase/               # Cơ sở dữ liệu (schema.sql, seed.sql, migrations) và cấu hình gửi thư (AUTH_SETUP.md, email-templates/)
 ```

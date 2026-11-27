@@ -31,10 +31,22 @@ body.kv-modal-open {
   overflow: hidden !important;
 }
 
-/* Bảo đảm khung đăng nhập cuộn gọn nếu bật chế độ Tạo tài khoản trên màn hình thấp */
+/* Bảo đảm khung đăng nhập cuộn gọn và thanh cuộn tối nếu mở trên màn hình cực thấp */
 .sheet {
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+.sheet::-webkit-scrollbar {
+  width: 6px;
+}
+.sheet::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sheet::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
 }
 
 /* Cho phép #top / #me nổi trên .lite-header (z-index 30) nhưng dưới bảng chi tiết (35/38) và overlay portal (70) */
@@ -44,6 +56,10 @@ body.kv-modal-open {
 
 #toast {
   z-index: 80;
+}
+
+body.locked #toast {
+  top: max(20px, var(--safe-top));
 }
 
 /* Chừa khoảng trống bên phải sticky header của Giao diện Nhẹ để không chạm #avatar */
@@ -203,6 +219,19 @@ body.lite {
 
 .kv-portal-overlay[hidden] {
   display: none !important;
+}
+
+/* Chuyển tiếp liên tục giữa 2 modal (Cài đặt <-> Đổi giao diện): nền tối giữ nguyên 1 lớp, bảng cũ thu lùi phía sau bảng mới */
+.kv-portal-overlay.is-handoff-in {
+  z-index: 72;
+}
+
+.kv-portal-overlay.is-handoff-out {
+  z-index: 70;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  pointer-events: none;
 }
 
 /* Khi chọn giao diện sau đăng nhập: nền giữ đồng bộ 1 màu tối #000000 */
@@ -647,10 +676,6 @@ body.choosing-mode .kv-portal-overlay {
   transform: translateY(0);
 }
 
-html.lite-root[data-motion="reduced"] .kv-setting-group-wrap {
-  transition-duration: 0.2s;
-}
-
 html.lite-root[data-motion="fast"] .kv-setting-group-wrap,
 html.lite-root[data-motion="fast"] .kv-setting-group-body,
 html.lite-root[data-motion="fast"] .kv-setting-chev {
@@ -682,11 +707,11 @@ html.lite-root[data-motion="fast"] .kv-setting-chev {
   line-height: 1.25;
 }
 
-/* Công tắc 3 mức hiệu ứng có ô trắng trượt mượt (.kv-seg-thumb) kiểu Login (.sheet) */
+/* Công tắc 2 mức hiệu ứng có ô trắng trượt mượt (.kv-seg-thumb) kiểu Login (.sheet) */
 .kv-seg {
   position: relative;
   display: inline-grid;
-  grid-template-columns: repeat(3, minmax(72px, 1fr));
+  grid-template-columns: repeat(2, minmax(72px, 1fr));
   padding: 3px;
   border-radius: 12px;
   border: 1px solid var(--line, rgba(255, 255, 255, 0.14));
@@ -699,7 +724,7 @@ html.lite-root[data-motion="fast"] .kv-setting-chev {
   top: 3px;
   bottom: 3px;
   left: 3px;
-  width: calc((100% - 6px) / 3);
+  width: calc((100% - 6px) / 2);
   border-radius: 9px;
   background: #eef1f6;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
@@ -1092,7 +1117,7 @@ html.lite-root[data-motion="fast"] .kv-setting-chev {
   .kv-seg {
     display: grid;
     width: 100%;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
